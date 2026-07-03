@@ -17,26 +17,14 @@
   <aside class="sidebar">
     <div class="logo"><div class="logo-badge">◆</div>Мой Трекер</div>
     <button class="nav-btn" data-view="dashboard"><span class="ico">▦</span>Дашборд</button>
-    <button class="nav-btn" data-view="work"><span class="ico">💼</span>Работа</button>
-    <button class="nav-btn" data-view="personal"><span class="ico">🚀</span>Личные проекты</button>
-    <button class="nav-btn" data-view="budget"><span class="ico">💰</span>Бюджет</button>
-    <button class="nav-btn" data-view="sport"><span class="ico">🏃</span>Спорт</button>
-    <button class="nav-btn" data-view="review"><span class="ico">📝</span>Итоги недели</button>
+    <div id="navMods" style="display:contents"></div>
     <div class="spacer"></div>
     <button class="nav-btn" data-view="settings"><span class="ico">⚙︎</span>Настройки</button>
     <button class="nav-btn" id="themeBtn"><span class="ico">☾</span>Тема</button>
   </aside>
   <main class="main" id="view"></main>
 </div>
-<nav class="bottomnav">
-  <button data-view="dashboard"><span class="ico">▦</span>Обзор</button>
-  <button data-view="work"><span class="ico">💼</span>Работа</button>
-  <button data-view="personal"><span class="ico">🚀</span>Проекты</button>
-  <button data-view="budget"><span class="ico">💰</span>Бюджет</button>
-  <button data-view="sport"><span class="ico">🏃</span>Спорт</button>
-  <button data-view="review"><span class="ico">📝</span>Итоги</button>
-  <button data-view="settings"><span class="ico">⚙︎</span>Ещё</button>
-</nav>
+<nav class="bottomnav" id="bottomNav"></nav>
 <div id="modalRoot"></div>
 <div id="toastRoot"></div>
 <script src="app.js"></script>

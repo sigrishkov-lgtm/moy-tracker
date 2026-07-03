@@ -55,12 +55,18 @@ const DEF_CAT_ICONS = {'Жильё':'🏠','Продукты':'🛒','Кафе �
 const DEFAULT_STATE = () => ({
   version: 2,
   updatedAt: 0,
-  settings: { mode:'dark', scheme:'violet', userName:'', supabaseUrl:'', supabaseKey:'', syncId:'', autoSync:true },
+  settings: { mode:'dark', scheme:'violet', userName:'', supabaseUrl:'', supabaseKey:'', syncId:'', autoSync:true,
+    modules: { work:true, personal:true, budget:true, sport:true, review:true, health:false, learn:false, travel:false, people:false } },
   work: { yearGoals:[], quarterGoals:[], weekFocuses:[], dayTasks:[], team:[], teamTasks:[], recurring:[], projects:[] },
   personal: { yearGoals:[], projects:[], tasks:[], weekFocuses:[], people:[], ideas:[], businesses:[] },
   budget: { plan:[], planned:[], transactions:[], debts:[], savings:[], categories:DEF_CATS(), catIcons:Object.assign({},DEF_CAT_ICONS) },
   sport: { workouts:[], types:['Бег','Силовая','Плавание','Вело','Йога','Футбол','Теннис'], weeklyGoal:3, goals:[] },
   templates: [],
+  health: { metrics:[], vitamins:[], vitaminLog:{}, checkups:[] },
+  learn: { books:[], courses:[] },
+  travel: { wishlist:[], trips:[] },
+  people: { contacts:[] },
+  mood: [],
   reviews: []
 });
 let S = load();
@@ -106,6 +112,18 @@ function migrate(s){
   if(!s.sport.weeklyGoal) s.sport.weeklyGoal = 3;
   if(!Array.isArray(s.sport.goals)) s.sport.goals = [];
   if(!Array.isArray(s.templates)) s.templates = [];
+  const DEF_MODS = { work:true, personal:true, budget:true, sport:true, review:true, health:false, learn:false, travel:false, people:false };
+  if(!s.settings.modules) s.settings.modules = Object.assign({}, DEF_MODS);
+  Object.keys(DEF_MODS).forEach(k=>{ if(typeof s.settings.modules[k] !== 'boolean') s.settings.modules[k] = DEF_MODS[k]; });
+  if(!s.health || !Array.isArray(s.health.metrics)) s.health = DEFAULT_STATE().health;
+  ['metrics','vitamins','checkups'].forEach(k=>{ if(!Array.isArray(s.health[k])) s.health[k]=[]; });
+  if(!s.health.vitaminLog || typeof s.health.vitaminLog!=='object') s.health.vitaminLog = {};
+  if(!s.learn || !Array.isArray(s.learn.books)) s.learn = DEFAULT_STATE().learn;
+  if(!Array.isArray(s.learn.courses)) s.learn.courses = [];
+  if(!s.travel || !Array.isArray(s.travel.trips)) s.travel = DEFAULT_STATE().travel;
+  if(!Array.isArray(s.travel.wishlist)) s.travel.wishlist = [];
+  if(!s.people || !Array.isArray(s.people.contacts)) s.people = DEFAULT_STATE().people;
+  if(!Array.isArray(s.mood)) s.mood = [];
   // дедупликация повторяющихся задач (могла возникнуть при синхронизации)
   const seen = new Set();
   s.work.dayTasks = s.work.dayTasks.filter(t=>{
@@ -551,7 +569,12 @@ function showTour(i){
       1. Поставьте <b>цели на год</b><br>2. Разбейте на <b>квартальные</b> — прогресс года посчитается сам<br>3. Каждую неделю выбирайте <b>1–3 фокуса</b><br>4. Каждый день — <b>задачи дня</b> и режим «🎯 Фокус дня»</div>`},
     {h:'Деньги и форма 💪', b:`<div style="line-height:2">💰 <b>Бюджет</b>: план и факт по категориям, долги, копилки, прогноз на 12 месяцев<br>🏃 <b>Спорт</b>: тренировки, цель на неделю, серии<br>📝 Раз в неделю — 10 минут на <b>итоги</b>: сделанное подставится само</div>`},
     {h:'Начнём? 🚀', b:`<div class="field" style="margin-top:6px"><label>Как вас зовут?</label><input id="tourName" placeholder="Например: Сергей" value="${esc(S.settings.userName||'')}"></div>
-      <div class="hint">Имя нужно только для приветствия. Можно начать с демо-данными, чтобы всё посмотреть, — потом сотрёте одной кнопкой.</div>`}
+      <div style="font-size:12.5px;font-weight:600;color:var(--text2);margin:12px 0 8px">ЧТО ЕЩЁ ХОТИТЕ ТРЕКАТЬ? (можно поменять в настройках)</div>
+      ${MODULES.filter(m=>['health','learn','travel','people'].includes(m.id)).map(m=>`
+        <label style="display:flex;align-items:center;gap:10px;font-size:14px;margin-bottom:7px;cursor:pointer">
+          <input type="checkbox" id="tour_m_${m.id}" style="width:auto"> ${m.icon} ${m.name}
+        </label>`).join('')}
+      <div class="hint" style="margin-top:8px">Имя нужно только для приветствия. Можно начать с демо-данными — потом сотрёте одной кнопкой.</div>`}
   ];
   const s = steps[i];
   $('#modalRoot').innerHTML = `
@@ -577,6 +600,10 @@ function showTour(i){
 function finishTour(withDemo){
   const inp = document.getElementById('tourName');
   if(inp && inp.value.trim()){ S.settings.userName = inp.value.trim(); }
+  ['health','learn','travel','people'].forEach(id=>{
+    const el = document.getElementById('tour_m_'+id);
+    if(el) S.settings.modules[id] = el.checked;
+  });
   localStorage.setItem('mytracker_tour_done','1');
   nameAsked = true;
   closeModal();
@@ -584,29 +611,66 @@ function finishTour(withDemo){
   else { save(); render(); }
 }
 
+/* ================= МОДУЛИ И НАВИГАЦИЯ ================= */
+const MODULES = [
+  {id:'work',     icon:'💼', name:'Работа',          short:'Работа'},
+  {id:'personal', icon:'🚀', name:'Личные проекты',  short:'Проекты'},
+  {id:'budget',   icon:'💰', name:'Бюджет',          short:'Бюджет'},
+  {id:'sport',    icon:'🏃', name:'Спорт',           short:'Спорт'},
+  {id:'health',   icon:'❤️', name:'Здоровье',        short:'Здоровье'},
+  {id:'learn',    icon:'📚', name:'Обучение',        short:'Учёба'},
+  {id:'travel',   icon:'🌴', name:'Путешествия',     short:'Поездки'},
+  {id:'people',   icon:'🤝', name:'Окружение',       short:'Люди'},
+  {id:'review',   icon:'📝', name:'Итоги недели',    short:'Итоги'},
+];
+function modOn(id){
+  const m = S.settings.modules || {};
+  return m[id] !== false;
+}
+function renderNav(){
+  const mods = MODULES.filter(m=>modOn(m.id));
+  const side = document.getElementById('navMods');
+  if(side) side.innerHTML = mods.map(m=>`<button class="nav-btn" data-view="${m.id}"><span class="ico">${m.icon}</span>${m.name}</button>`).join('');
+  const bot = document.getElementById('bottomNav');
+  if(bot) bot.innerHTML = `<button data-view="dashboard"><span class="ico">▦</span>Обзор</button>`
+    + mods.map(m=>`<button data-view="${m.id}"><span class="ico">${m.icon}</span>${m.short}</button>`).join('')
+    + `<button data-view="settings"><span class="ico">⚙︎</span>Ещё</button>`;
+  document.querySelectorAll('[data-view]').forEach(b=>{ b.onclick = ()=>go(b.dataset.view); });
+}
+function toggleModule(id, on){
+  S.settings.modules[id] = on;
+  save();
+  if(!on && VIEW===id) go('dashboard'); else render();
+}
+
 /* ================= ROUTER ================= */
 let VIEW = localStorage.getItem('mytracker_view') || 'dashboard';
 const SUB = JSON.parse(localStorage.getItem('mytracker_sub')||'{}'); // sub-tabs per view
 function go(v){ VIEW=v; localStorage.setItem('mytracker_view',v); render(); window.scrollTo(0,0); }
 function setSub(view, val){ SUB[view]=val; localStorage.setItem('mytracker_sub', JSON.stringify(SUB)); render(); }
-document.querySelectorAll('[data-view]').forEach(b=> b.addEventListener('click', ()=>go(b.dataset.view)));
+renderNav();
 
+let healthChart = null;
 function destroyCharts(){
   try{
-    [cfChart, histChart, catChart, sportChart].forEach(c=>{ if(c) c.destroy(); });
-    cfChart = histChart = catChart = sportChart = null;
+    [cfChart, histChart, catChart, sportChart, healthChart].forEach(c=>{ if(c) c.destroy(); });
+    cfChart = histChart = catChart = sportChart = healthChart = null;
     Object.keys(bizCharts).forEach(k=>{ bizCharts[k].destroy(); delete bizCharts[k]; });
   }catch(e){}
 }
 function render(){
   destroyCharts();
+  renderNav();
+  if(MODULES.some(m=>m.id===VIEW) && !modOn(VIEW)) VIEW = 'dashboard';
   document.querySelectorAll('[data-view]').forEach(b=> b.classList.toggle('active', b.dataset.view===VIEW));
-  const views = {dashboard:vDashboard, work:vWork, personal:vPersonal, budget:vBudget, sport:vSport, review:vReview, settings:vSettings};
+  const views = {dashboard:vDashboard, work:vWork, personal:vPersonal, budget:vBudget, sport:vSport, review:vReview, settings:vSettings,
+    health:vHealth, learn:vLearn, travel:vTravel, people:vPeople};
   const vEl = $('#view');
   vEl.innerHTML = (views[VIEW]||vDashboard)();
   vEl.classList.remove('anim'); void vEl.offsetWidth; vEl.classList.add('anim');
   if(VIEW==='budget'){ drawForecast(); drawHistory(); drawDonut(); }
   if(VIEW==='sport'){ drawSportChart(); }
+  if(VIEW==='health'){ drawHealthChart(); }
   if(VIEW==='personal'){ drawBizCharts(); }
 }
 
@@ -800,6 +864,14 @@ function upcomingDeadlines(){
   S.personal.businesses.forEach(b=>b.tasks.filter(t=>!t.done&&t.deadline).forEach(t=>{
     items.push({title:t.title, sub:'🏢 '+b.name, dl:t.deadline, view:'personal', subtab:['personal','biz']});
   }));
+  if(modOn('health')) S.health.checkups.forEach(c=>{
+    if(!c.lastDate || !c.intervalMonths) return;
+    const next = monthAdd(c.lastDate.slice(0,7), c.intervalMonths) + c.lastDate.slice(7);
+    if(next <= addDays(todayStr(),7)) items.push({title:'Чекап: '+c.name, sub:'🩺 здоровье', dl:next, view:'health', subtab:null});
+  });
+  if(modOn('travel')) S.travel.trips.forEach(t=>{
+    if(t.start && t.start >= todayStr()) items.push({title:'Поездка: '+t.name, sub:'🌴 путешествия', dl:t.start, view:'travel', subtab:null});
+  });
   return items.filter(i=>daysUntil(i.dl)<=7).sort((a,b)=>a.dl.localeCompare(b.dl)).slice(0,8);
 }
 function vDashboard(){
@@ -832,7 +904,7 @@ function vDashboard(){
   return `
   <div class="page-head">
     <div><h1>${greeting()}${S.settings.userName?', '+esc(S.settings.userName):''} 👋</h1>
-    <div class="sub">${DAYS[dt.getDay()]}, ${dt.getDate()} ${MONTHS_SHORT[dt.getMonth()]} ${dt.getFullYear()} · Q${curQuarter()} · выполнено за неделю: <b>${doneThisWeek()}</b> · 🏃 <b>${weekWorkouts(weekStart()).length}/${S.sport.weeklyGoal}</b></div></div>
+    <div class="sub">${DAYS[dt.getDay()]}, ${dt.getDate()} ${MONTHS_SHORT[dt.getMonth()]} ${dt.getFullYear()} · Q${curQuarter()} · выполнено за неделю: <b>${doneThisWeek()}</b> ${modOn('sport')?` · 🏃 <b>${weekWorkouts(weekStart()).length}/${S.sport.weeklyGoal}</b>`:''}</div></div>
     <button class="btn btn-primary" onclick="openFocusMode()">🎯 Фокус дня</button>
   </div>
   <div class="quick-add">
@@ -884,8 +956,8 @@ function vDashboard(){
       <h2>🔥 Фокусы недели</h2>
       ${focuses.length ? focuses.map(x=>focusRow(x.f, x.scope, true)).join('') : '<div class="empty">Фокусы недели не заданы</div>'}
       <div style="display:flex;gap:8px;margin-top:12px">
-        <button class="btn btn-ghost btn-sm" onclick="addFocus('work')">+ рабочий</button>
-        <button class="btn btn-ghost btn-sm" onclick="addFocus('personal')">+ личный</button>
+        ${modOn('work')?`<button class="btn btn-ghost btn-sm" onclick="addFocus('work')">+ рабочий</button>`:''}
+        ${modOn('personal')?`<button class="btn btn-ghost btn-sm" onclick="addFocus('personal')">+ личный</button>`:''}
       </div>
       ${allGoals.length?`<div style="font-size:12px;font-weight:600;color:var(--text3);margin:16px 0 4px">ЦЕЛИ ГОДА</div>
       ${allGoals.slice(0,5).map(x=>`<div class="item-row"><div class="grow"><div class="item-title">${esc(x.g.title)}</div>
@@ -930,6 +1002,20 @@ function doSearch(q){
   S.reviews.forEach(x=>{ if(hit(x.wins)||hit(x.fails)||hit(x.plans)) res.push({l:'Итоги недели '+fmtDate(x.weekStart), s:'📝 итоги недели', v:'review', t:null}); });
   S.sport.workouts.forEach(x=>{ if(hit(x.type)||hit(x.notes)) res.push({l:x.type+' · '+fmtDate(x.date), s:'🏃 тренировка · '+(x.minutes||0)+' мин', v:'sport', t:null}); });
   S.sport.goals.forEach(x=>{ if(hit(x.title)) res.push({l:x.title, s:'🎯 спортивная цель', v:'sport', t:null}); });
+  if(modOn('learn')){
+    S.learn.books.forEach(x=>{ if(hit(x.title)||hit(x.author)||hit(x.note)) res.push({l:x.title, s:'📚 книга', v:'learn', t:null}); });
+    S.learn.courses.forEach(x=>{ if(hit(x.name)) res.push({l:x.name, s:'🎓 курс', v:'learn', t:null}); });
+  }
+  if(modOn('travel')){
+    S.travel.trips.forEach(x=>{ if(hit(x.name)) res.push({l:x.name, s:'🌴 поездка', v:'travel', t:null}); });
+    S.travel.wishlist.forEach(x=>{ if(hit(x.place)) res.push({l:x.place, s:'🗺 хочу посетить', v:'travel', t:null}); });
+  }
+  if(modOn('people')){
+    S.people.contacts.forEach(x=>{ if(hit(x.name)||hit(x.tag)||hit(x.notes)) res.push({l:x.name, s:'🤝 окружение', v:'people', t:null}); });
+  }
+  if(modOn('health')){
+    S.health.checkups.forEach(x=>{ if(hit(x.name)) res.push({l:x.name, s:'🩺 чекап', v:'health', t:null}); });
+  }
   window._searchRes = res.slice(0,15);
   out.innerHTML = res.length ? `<div class="card" style="margin-bottom:16px">
     <div class="sub" style="margin-bottom:6px">Найдено: ${res.length}</div>
@@ -1650,6 +1736,7 @@ function calEvents(scope){
   if(scope!=='work'){
     S.personal.tasks.forEach(t=>{ if(t.deadline && !t.done) push(t.deadline, t.title, 'var(--pink)'); });
     S.personal.businesses.forEach(b=>b.tasks.forEach(t=>{ if(t.deadline && !t.done) push(t.deadline, (b.icon||'🏢')+' '+t.title, '#2dd4bf'); }));
+    if(modOn('travel')) S.travel.trips.forEach(t=>{ if(t.start && (!t.end || t.end>=todayStr())) push(t.start, '🌴 '+t.name, '#fb923c'); });
   }
   return events;
 }
@@ -2993,42 +3080,564 @@ function drawSportChart(){
   });
 }
 
-/* ================= WEEKLY REVIEW ================= */
-function vReview(){
-  const reviews = [...S.reviews].sort((a,b)=>b.weekStart.localeCompare(a.weekStart));
-  const thisWeek = S.reviews.find(r=>r.weekStart===weekStart());
+
+/* ================= ЗДОРОВЬЕ ================= */
+function todayMetric(){ return S.health.metrics.find(m=>m.date===todayStr()); }
+function vHealth(){
+  const t = todayMetric() || {};
+  const recent = [...S.health.metrics].sort((a,b)=>b.date.localeCompare(a.date));
+  const lastW = recent.find(m=>m.weight);
+  const avgSleep7 = (()=>{ const xs = recent.slice(0,7).map(m=>m.sleep).filter(Boolean); return xs.length? (xs.reduce((a,b)=>a+b,0)/xs.length).toFixed(1) : null; })();
+  const avgEnergy7 = (()=>{ const xs = recent.slice(0,7).map(m=>m.energy).filter(Boolean); return xs.length? (xs.reduce((a,b)=>a+b,0)/xs.length).toFixed(1) : null; })();
+  const vits = S.health.vitamins;
+  const logToday = S.health.vitaminLog[todayStr()] || [];
+  const checkups = [...S.health.checkups].map(c=>{
+    const next = c.lastDate ? monthAdd(c.lastDate.slice(0,7), c.intervalMonths) + c.lastDate.slice(7) : null;
+    return Object.assign({next}, c);
+  }).sort((a,b)=>String(a.next||'0').localeCompare(String(b.next||'0')));
   return `
-  <div class="page-head">
-    <div><h1>Итоги недели</h1><div class="sub">Еженедельная рефлексия — 10 минут в пятницу или воскресенье</div></div>
-    ${thisWeek?'':`<button class="btn btn-primary" onclick="addReview()">+ Итоги этой недели</button>`}
+  <div class="page-head"><div><h1>Здоровье</h1><div class="sub">Минутка в день — и вся динамика перед глазами</div></div></div>
+  <div class="grid grid4" style="margin-bottom:16px">
+    <div class="card stat-card"><div class="lbl">⚖️ Вес</div><div class="val mono">${lastW?lastW.weight+' кг':'—'}</div>
+      <div class="sub2">${lastW?'запись от '+fmtDate(lastW.date):'добавьте первую запись'}</div></div>
+    <div class="card stat-card"><div class="lbl">😴 Сон · среднее 7 дней</div><div class="val mono">${avgSleep7?avgSleep7+' ч':'—'}</div></div>
+    <div class="card stat-card"><div class="lbl">⚡ Энергия · среднее 7 дней</div><div class="val mono">${avgEnergy7?avgEnergy7+' / 5':'—'}</div></div>
+    <div class="card stat-card"><div class="lbl">💊 Витамины сегодня</div><div class="val">${logToday.length} из ${vits.length||0}</div></div>
   </div>
-  ${thisWeek?`<div class="card" style="margin-bottom:16px;border-color:var(--accent)">
-    <span class="chip violet">текущая неделя — заполнено ✓</span></div>`:''}
-  ${reviews.length ? reviews.map(reviewCard).join('') : `
-    <div class="card empty">Пока нет ни одного разбора недели.<br><br>
-    Каждую неделю отвечайте на 3 вопроса: что получилось, что не получилось, что сделаю на следующей неделе.
-    Это самый простой способ расти системно.</div>`}`;
-}
-const MOODS = ['😞','😕','😐','🙂','🔥'];
-function reviewCard(r){
-  return `<div class="card" style="margin-bottom:14px">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-      <span style="font-size:22px">${MOODS[r.mood-1]||'😐'}</span>
-      <div class="grow" style="flex:1">
-        <b>Неделя ${fmtDate(r.weekStart)} – ${fmtDate(addDays(r.weekStart,6))}</b>
+  <div class="grid grid2" style="margin-bottom:16px">
+    <div class="card">
+      <h2>📝 Сегодня, ${fmtDate(todayStr())}</h2>
+      <div class="frow">
+        <div class="field"><label>Вес, кг</label><input id="hWeight" type="number" step="0.1" value="${t.weight||''}" placeholder="82.5"></div>
+        <div class="field"><label>Сон, часов</label><input id="hSleep" type="number" step="0.5" min="0" max="24" value="${t.sleep||''}" placeholder="7.5"></div>
+        <div class="field"><label>Энергия 1–5</label><select id="hEnergy">
+          <option value="">—</option>${[1,2,3,4,5].map(n=>`<option ${t.energy===n?'selected':''}>${n}</option>`).join('')}
+        </select></div>
       </div>
-      <button class="icon-btn" onclick="editReview('${r.id}')">✎</button>
-      <button class="icon-btn btn-danger" onclick="delReview('${r.id}')">✕</button>
+      <button class="btn btn-primary btn-sm" onclick="saveHealthToday()">Сохранить</button>
+      ${vits.length?`<div style="font-size:12px;font-weight:700;color:var(--text3);margin:18px 0 6px">💊 ВИТАМИНЫ И ЛЕКАРСТВА</div>
+      ${vits.map(v=>`<div class="item-row" style="padding:8px 0">
+        <button class="checkbox ${logToday.includes(v.id)?'on':''}" onclick="toggleVitamin('${v.id}')">${logToday.includes(v.id)?'✓':''}</button>
+        <div class="grow"><div class="item-title" style="font-size:13.5px">${esc(v.name)}</div></div>
+        <button class="icon-btn btn-danger" onclick="delVitamin('${v.id}')">✕</button>
+      </div>`).join('')}`:''}
+      <div class="quick-add" style="margin-top:10px">
+        <input placeholder="Добавить витамин/лекарство… (Enter)" onkeydown="if(event.key==='Enter'&&this.value.trim()){addVitamin(this.value.trim());this.value=''}">
+      </div>
     </div>
-    <div class="grid grid3">
-      <div><div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:5px">✅ ПОЛУЧИЛОСЬ</div>
-        <div style="font-size:13.5px;white-space:pre-wrap;color:var(--text2)">${esc(r.wins)||'—'}</div></div>
-      <div><div style="font-size:12px;font-weight:700;color:var(--red);margin-bottom:5px">❌ НЕ ПОЛУЧИЛОСЬ</div>
-        <div style="font-size:13.5px;white-space:pre-wrap;color:var(--text2)">${esc(r.fails)||'—'}</div></div>
-      <div><div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:5px">➡️ ПЛАН НА СЛЕД. НЕДЕЛЮ</div>
-        <div style="font-size:13.5px;white-space:pre-wrap;color:var(--text2)">${esc(r.plans)||'—'}</div></div>
+    <div class="card">
+      <h2>⚖️ Динамика веса</h2>
+      ${S.health.metrics.filter(m=>m.weight).length>=2
+        ? '<div style="position:relative;height:240px"><canvas id="healthChart"></canvas></div>'
+        : emptyBig('⚖️','Мало данных для графика','Вносите вес пару раз в неделю — появится динамика')}
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h2 style="margin:0">🩺 Чекапы и врачи</h2>
+      <button class="btn btn-primary btn-sm" onclick="addCheckup()">+ Чекап</button>
+    </div>
+    ${checkups.map(c=>{
+      const overdue = c.next && c.next <= todayStr();
+      const soon = c.next && !overdue && daysUntil(c.next) <= 30;
+      return `<div class="item-row">
+        <div class="grow"><div class="item-title">${esc(c.name)}</div>
+          <div class="item-meta">раз в ${c.intervalMonths} мес · был: ${c.lastDate?fmtDate(c.lastDate):'—'}
+          ${c.next?`<span class="chip ${overdue?'red':soon?'yellow':''}">${overdue?'⚠ пора!':'след: '+fmtDate(c.next)}</span>`:''}</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="doneCheckup('${c.id}')">✓ пройден</button>
+        <button class="icon-btn" onclick="editCheckup('${c.id}')">✎</button>
+        <button class="icon-btn btn-danger" onclick="delCheckup('${c.id}')">✕</button>
+      </div>`;
+    }).join('') || emptyBig('🩺','Добавьте регулярные чекапы','Стоматолог раз в 6 месяцев, анализы раз в год — трекер напомнит')}
+  </div>`;
+}
+function saveHealthToday(){
+  const w = parseFloat(document.getElementById('hWeight').value)||null;
+  const sl = parseFloat(document.getElementById('hSleep').value)||null;
+  const en = parseInt(document.getElementById('hEnergy').value)||null;
+  let m = todayMetric();
+  if(!m){ m = {id:uid(), date:todayStr()}; S.health.metrics.push(m); }
+  Object.assign(m, {weight:w, sleep:sl, energy:en});
+  save(); render(); toast('Сохранено ✓');
+}
+function addVitamin(name){ S.health.vitamins.push({id:uid(), name}); save(); render(); }
+function delVitamin(id){ confirmDel('Удалить?',()=>{ S.health.vitamins = S.health.vitamins.filter(v=>v.id!==id); }); }
+function toggleVitamin(id){
+  const day = todayStr();
+  const log = S.health.vitaminLog[day] || [];
+  S.health.vitaminLog[day] = log.includes(id) ? log.filter(x=>x!==id) : [...log, id];
+  save(); render();
+}
+function checkupForm(c){
+  c = c||{};
+  return `
+    <div class="field"><label>Название</label><input name="name" required value="${esc(c.name||'')}" placeholder="Стоматолог, анализы, окулист…"></div>
+    <div class="frow">
+      <div class="field"><label>Раз в N месяцев</label><input name="intervalMonths" type="number" min="1" max="60" value="${c.intervalMonths||6}"></div>
+      <div class="field"><label>Последний раз</label><input name="lastDate" type="date" value="${c.lastDate||''}"></div>
+    </div>`;
+}
+function addCheckup(){
+  openModal('Регулярный чекап', checkupForm(), d=>{
+    if(!d.name.trim()) return false;
+    S.health.checkups.push({id:uid(), name:d.name.trim(), intervalMonths:+d.intervalMonths||6, lastDate:d.lastDate||null});
+    save(); render();
+  }, 'Добавить');
+}
+function editCheckup(id){
+  const c = S.health.checkups.find(x=>x.id===id); if(!c) return;
+  openModal('Чекап', checkupForm(c), d=>{
+    Object.assign(c,{name:d.name.trim(), intervalMonths:+d.intervalMonths||6, lastDate:d.lastDate||null});
+    save(); render();
+  });
+}
+function doneCheckup(id){
+  const c = S.health.checkups.find(x=>x.id===id); if(!c) return;
+  c.lastDate = todayStr(); save(); render(); toast('Отмечено ✓');
+}
+function delCheckup(id){ confirmDel('Удалить чекап?',()=>{ S.health.checkups = S.health.checkups.filter(x=>x.id!==id); }); }
+function drawHealthChart(){
+  const cv = document.getElementById('healthChart');
+  if(!cv || typeof Chart==='undefined') return;
+  const data = S.health.metrics.filter(m=>m.weight).sort((a,b)=>a.date.localeCompare(b.date)).slice(-30);
+  if(data.length<2) return;
+  const css = getComputedStyle(document.documentElement);
+  healthChart = new Chart(cv, {
+    type:'line',
+    data:{ labels:data.map(m=>fmtDate(m.date)), datasets:[{ data:data.map(m=>m.weight),
+      borderColor:'#34d399', borderWidth:2.5, tension:.35, pointRadius:3, pointBackgroundColor:'#34d399', fill:false }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>c.parsed.y+' кг'}} },
+      scales:{ x:{grid:{display:false}, ticks:{color:css.getPropertyValue('--text2').trim(), font:{size:10}}},
+        y:{grid:{color:css.getPropertyValue('--border').trim()}, ticks:{color:css.getPropertyValue('--text2').trim(), font:{size:10}}} }
+    }
+  });
+}
+
+/* ================= ОБУЧЕНИЕ ================= */
+const BOOK_STATUS = {reading:['📖 Читаю','blue'], want:['🔖 Хочу прочитать',''], done:['✅ Прочитано','green']};
+function vLearn(){
+  const books = S.learn.books;
+  const byStatus = st => books.filter(b=>b.status===st);
+  const doneThisYear = books.filter(b=>b.status==='done' && b.doneAt && b.doneAt.slice(0,4)===String(curYear())).length;
+  const bookRow = b => `<div class="item-row book-row">
+    <span class="cover">${b.status==='done'?'✓':'📕'}</span>
+    <div class="grow"><div class="item-title">${esc(b.title)}</div>
+      <div class="item-meta">${b.author?esc(b.author)+' · ':''}${b.rating?'★'.repeat(b.rating):''}${b.status==='done'&&b.doneAt?' · '+fmtDate(b.doneAt):''}</div>
+      ${b.note?`<div class="notes-line" title="${esc(b.note)}">${esc(b.note)}</div>`:''}</div>
+    ${b.status==='want'?`<button class="btn btn-ghost btn-sm" onclick="setBookStatus('${b.id}','reading')">начать</button>`:''}
+    ${b.status==='reading'?`<button class="btn btn-ghost btn-sm" onclick="finishBook('${b.id}')">✓ прочитал</button>`:''}
+    <button class="icon-btn" onclick="editBook('${b.id}')">✎</button>
+    <button class="icon-btn btn-danger" onclick="delBook('${b.id}')">✕</button>
+  </div>`;
+  return `
+  <div class="page-head"><div><h1>Обучение</h1><div class="sub">Книги и курсы · прочитано в ${curYear()}: <b>${doneThisYear}</b></div></div></div>
+  <div class="grid grid2">
+    <div class="card">
+      <h2>📚 Книги</h2>
+      <div class="quick-add" style="margin-bottom:10px">
+        <input placeholder="Добавить книгу… (Enter)" onkeydown="if(event.key==='Enter'&&this.value.trim()){addBook(this.value.trim());this.value=''}">
+      </div>
+      ${['reading','want','done'].map(st=>{
+        const list = byStatus(st);
+        if(!list.length) return '';
+        return `<div style="font-size:12px;font-weight:700;color:var(--text3);margin:14px 0 4px">${BOOK_STATUS[st][0].toUpperCase()} · ${list.length}</div>`
+          + (st==='done' ? list.slice(0,8).map(bookRow).join('') + (list.length>8?`<div class="hint" style="padding:6px 0">…и ещё ${list.length-8}</div>`:'') : list.map(bookRow).join(''));
+      }).join('') || emptyBig('📚','Полка пуста','Добавьте книгу, которую читаете или хотите прочитать')}
+    </div>
+    <div class="card" style="align-self:start">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h2 style="margin:0">🎓 Курсы</h2>
+        <button class="btn btn-primary btn-sm" onclick="addCourse()">+ Курс</button>
+      </div>
+      ${S.learn.courses.map(c=>{
+        const pct = c.total ? Math.min(100, Math.round((c.done||0)/c.total*100)) : 0;
+        return `<div class="item-row" style="flex-wrap:wrap">
+          <div class="grow" style="flex:1;min-width:60%">
+            <div class="item-title">${esc(c.name)} ${pct>=100?'<span class="chip green">завершён 🎉</span>':''}</div>
+            <div class="item-meta mono">${c.done||0} из ${c.total} уроков · ${pct}%</div>
+            <div class="progress green" style="margin-top:6px"><div style="width:${pct}%"></div></div>
+          </div>
+          ${pct<100?`<button class="btn btn-ghost btn-sm" onclick="incCourse('${c.id}')">+1 урок</button>`:''}
+          <button class="icon-btn" onclick="editCourse('${c.id}')">✎</button>
+          <button class="icon-btn btn-danger" onclick="delCourse('${c.id}')">✕</button>
+        </div>`;
+      }).join('') || emptyBig('🎓','Курсов пока нет','Добавьте курс с числом уроков — прогресс будет расти по кнопке «+1 урок»')}
     </div>
   </div>`;
+}
+function addBook(title){ S.learn.books.push({id:uid(), title, status:'want'}); save(); render(); }
+function setBookStatus(id, st){
+  const b = S.learn.books.find(x=>x.id===id); if(!b) return;
+  b.status = st; if(st==='done') b.doneAt = todayStr();
+  save(); render();
+}
+function finishBook(id){
+  const b = S.learn.books.find(x=>x.id===id); if(!b) return;
+  openModal('Книга прочитана! 🎉', `
+    <div class="field"><label>Оценка</label><select name="rating">
+      <option value="">—</option>${[5,4,3,2,1].map(n=>`<option value="${n}">${'★'.repeat(n)}</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Главная мысль (необяз.)</label><textarea name="note"></textarea></div>
+  `, d=>{
+    Object.assign(b,{status:'done', doneAt:todayStr(), rating:+d.rating||null, note:d.note.trim()});
+    save(); render(); toast('Полка пополнилась 📚');
+  }, 'Готово');
+}
+function editBook(id){
+  const b = S.learn.books.find(x=>x.id===id); if(!b) return;
+  openModal('Книга', `
+    <div class="field"><label>Название</label><input name="title" required value="${esc(b.title)}"></div>
+    <div class="field"><label>Автор</label><input name="author" value="${esc(b.author||'')}"></div>
+    <div class="frow">
+      <div class="field"><label>Статус</label><select name="status">
+        ${Object.entries(BOOK_STATUS).map(([k,[l]])=>`<option value="${k}" ${b.status===k?'selected':''}>${l}</option>`).join('')}
+      </select></div>
+      <div class="field"><label>Оценка</label><select name="rating">
+        <option value="">—</option>${[5,4,3,2,1].map(n=>`<option value="${n}" ${b.rating===n?'selected':''}>${'★'.repeat(n)}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="field"><label>Заметка</label><textarea name="note">${esc(b.note||'')}</textarea></div>
+  `, d=>{
+    const wasDone = b.status==='done';
+    Object.assign(b,{title:d.title.trim(), author:d.author.trim(), status:d.status, rating:+d.rating||null, note:d.note.trim()});
+    if(d.status==='done' && !wasDone) b.doneAt = todayStr();
+    save(); render();
+  });
+}
+function delBook(id){ confirmDel('Удалить книгу?',()=>{ S.learn.books = S.learn.books.filter(x=>x.id!==id); }); }
+function addCourse(){
+  openModal('Новый курс', `
+    <div class="field"><label>Название</label><input name="name" required placeholder="Например: курс по управлению"></div>
+    <div class="frow">
+      <div class="field"><label>Всего уроков</label><input name="total" type="number" min="1" value="10" required></div>
+      <div class="field"><label>Пройдено</label><input name="done" type="number" min="0" value="0"></div>
+    </div>
+  `, d=>{
+    if(!d.name.trim()||!+d.total) return false;
+    S.learn.courses.push({id:uid(), name:d.name.trim(), total:+d.total, done:+d.done||0});
+    save(); render();
+  }, 'Добавить');
+}
+function incCourse(id){
+  const c = S.learn.courses.find(x=>x.id===id); if(!c) return;
+  c.done = Math.min(c.total, (c.done||0)+1);
+  save(); render();
+  if(c.done>=c.total) toast('Курс завершён! 🎉');
+}
+function editCourse(id){
+  const c = S.learn.courses.find(x=>x.id===id); if(!c) return;
+  openModal('Курс', `
+    <div class="field"><label>Название</label><input name="name" required value="${esc(c.name)}"></div>
+    <div class="frow">
+      <div class="field"><label>Всего уроков</label><input name="total" type="number" min="1" value="${c.total}"></div>
+      <div class="field"><label>Пройдено</label><input name="done" type="number" min="0" value="${c.done||0}"></div>
+    </div>
+  `, d=>{ Object.assign(c,{name:d.name.trim(), total:+d.total||c.total, done:Math.min(+d.done||0, +d.total||c.total)}); save(); render(); });
+}
+function delCourse(id){ confirmDel('Удалить курс?',()=>{ S.learn.courses = S.learn.courses.filter(x=>x.id!==id); }); }
+
+/* ================= ПУТЕШЕСТВИЯ ================= */
+function vTravel(){
+  const trips = [...S.travel.trips].sort((a,b)=>String(a.start||'9999').localeCompare(String(b.start||'9999')));
+  const upcoming = trips.filter(t=>!t.end || t.end>=todayStr());
+  const past = trips.filter(t=>t.end && t.end<todayStr());
+  const tripCard = t => {
+    const cl = t.checklist||[];
+    const done = cl.filter(x=>x.done).length;
+    const days = t.start ? daysUntil(t.start) : null;
+    return `<div class="card">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div class="grow" style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:15.5px">🌴 ${esc(t.name)}</div>
+          <div class="item-meta" style="margin-top:4px">
+            ${t.start?`<span class="chip">${fmtDate(t.start)}${t.end?' – '+fmtDate(t.end):''}</span>`:''}
+            ${days!==null && days>0 ? `<span class="chip violet">через ${days} ${plural(days,'день','дня','дней')}</span>` : days!==null && days<=0 && (!t.end||t.end>=todayStr()) ? '<span class="chip green">сейчас! ✈️</span>':''}
+            ${t.budget?`<span class="chip mono">💰 ${fmtMoney(t.budget)}</span>`:''}
+          </div>
+        </div>
+        <button class="icon-btn" onclick="editTrip('${t.id}')">✎</button>
+        <button class="icon-btn btn-danger" onclick="delTrip('${t.id}')">✕</button>
+      </div>
+      ${t.budget && !t.budgetLinked ? `<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="linkTripBudget('${t.id}')">💰 Учесть в бюджете (разовая операция)</button>`
+        : t.budgetLinked ? '<div class="hint" style="margin-top:6px">✓ учтено в прогнозе бюджета</div>' : ''}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:12px 0 4px">
+        <div style="font-size:12px;font-weight:700;color:var(--text3)">ЧЕК-ЛИСТ · ${done}/${cl.length}</div>
+      </div>
+      ${cl.length?`<div class="progress green" style="margin-bottom:8px"><div style="width:${cl.length?Math.round(done/cl.length*100):0}%"></div></div>`:''}
+      ${cl.map(x=>`<div class="sub-row ${x.done?'done':''}" style="padding-left:0">
+        <button class="checkbox ${x.done?'on':''}" onclick="toggleTripItem('${t.id}','${x.id}')">${x.done?'✓':''}</button>
+        <span style="flex:1">${esc(x.t)}</span>
+        <button class="icon-btn" style="width:22px;height:22px;font-size:11px" onclick="delTripItem('${t.id}','${x.id}')">✕</button>
+      </div>`).join('')}
+      <div class="quick-add" style="margin-top:8px">
+        <input placeholder="Добавить в чек-лист… (Enter)" onkeydown="if(event.key==='Enter'&&this.value.trim()){addTripItem('${t.id}',this.value.trim());this.value=''}">
+      </div>
+    </div>`;
+  };
+  return `
+  <div class="page-head">
+    <div><h1>Путешествия</h1><div class="sub">Мечты, планы и сборы</div></div>
+    <button class="btn btn-primary" onclick="addTrip()">+ Поездка</button>
+  </div>
+  <div class="grid grid2" style="margin-bottom:16px">
+    <div class="card" style="align-self:start">
+      <h2>🗺 Хочу посетить</h2>
+      <div class="quick-add" style="margin-bottom:8px">
+        <input placeholder="Добавить место… (Enter)" onkeydown="if(event.key==='Enter'&&this.value.trim()){addWish(this.value.trim());this.value=''}">
+      </div>
+      ${S.travel.wishlist.map(w=>`<div class="item-row">
+        <span>📍</span><div class="grow"><div class="item-title">${esc(w.place)}</div></div>
+        <button class="btn btn-ghost btn-sm" onclick="wishToTrip('${w.id}')">→ в поездку</button>
+        <button class="icon-btn btn-danger" onclick="delWish('${w.id}')">✕</button>
+      </div>`).join('') || emptyBig('🗺','Куда мечтаете поехать?','Копите список — лучшие идеи превратятся в поездки')}
+    </div>
+    <div>
+      ${upcoming.map(tripCard).join('') || `<div class="card">${emptyBig('✈️','Поездок пока нет','Создайте поездку — чек-лист сборов, дата и бюджет в одном месте')}</div>`}
+    </div>
+  </div>
+  ${past.length?`<h2 style="margin-bottom:12px">🏝 Прошедшие</h2><div class="grid grid2">${past.map(tripCard).join('')}</div>`:''}`;
+}
+const TRIP_CHECKLIST_DEFAULT = ['Паспорт / документы','Билеты','Жильё','Страховка','Аптечка','Зарядки и техника'];
+function tripForm(t){
+  t = t||{};
+  return `
+    <div class="field"><label>Куда / название</label><input name="name" required value="${esc(t.name||'')}" placeholder="Сочи, море"></div>
+    <div class="frow">
+      <div class="field"><label>Начало</label><input name="start" type="date" value="${t.start||''}"></div>
+      <div class="field"><label>Конец</label><input name="end" type="date" value="${t.end||''}"></div>
+    </div>
+    <div class="field"><label>Бюджет поездки, ₽ (необяз.)</label><input name="budget" type="number" min="0" value="${t.budget||''}"></div>`;
+}
+function addTrip(prefillName){
+  openModal('Новая поездка', tripForm(prefillName?{name:prefillName}:null) + `
+    <div class="field" style="display:flex;gap:8px;align-items:center">
+      <input type="checkbox" name="defList" checked style="width:auto"><label style="margin:0">Добавить стандартный чек-лист сборов</label>
+    </div>
+  `, d=>{
+    if(!d.name.trim()) return false;
+    S.travel.trips.push({id:uid(), name:d.name.trim(), start:d.start||null, end:d.end||null, budget:+d.budget||null,
+      budgetLinked:false, checklist: d.defList ? TRIP_CHECKLIST_DEFAULT.map(x=>({id:uid(), t:x, done:false})) : []});
+    save(); render();
+  }, 'Создать');
+}
+function editTrip(id){
+  const t = S.travel.trips.find(x=>x.id===id); if(!t) return;
+  openModal('Поездка', tripForm(t), d=>{
+    Object.assign(t,{name:d.name.trim(), start:d.start||null, end:d.end||null, budget:+d.budget||null});
+    save(); render();
+  });
+}
+function delTrip(id){ confirmDel('Удалить поездку?',()=>{ S.travel.trips = S.travel.trips.filter(x=>x.id!==id); }); }
+function addTripItem(tripId, txt){
+  const t = S.travel.trips.find(x=>x.id===tripId); if(!t) return;
+  (t.checklist = t.checklist||[]).push({id:uid(), t:txt, done:false});
+  save(); render();
+}
+function toggleTripItem(tripId, itemId){
+  const t = S.travel.trips.find(x=>x.id===tripId); const it = t && (t.checklist||[]).find(x=>x.id===itemId);
+  if(it){ it.done = !it.done; save(); render(); }
+}
+function delTripItem(tripId, itemId){
+  const t = S.travel.trips.find(x=>x.id===tripId); if(!t) return;
+  t.checklist = (t.checklist||[]).filter(x=>x.id!==itemId); save(); render();
+}
+function linkTripBudget(id){
+  const t = S.travel.trips.find(x=>x.id===id); if(!t || !t.budget) return;
+  const month = t.start ? t.start.slice(0,7) : curMonth();
+  S.budget.planned.push({id:uid(), type:'expense', name:'Поездка: '+t.name, amount:t.budget, month, category:'Развлечения', done:false});
+  t.budgetLinked = true;
+  save(); render(); toast('Добавлено в план бюджета ✓');
+}
+function addWish(place){ S.travel.wishlist.push({id:uid(), place}); save(); render(); }
+function delWish(id){ confirmDel('Удалить?',()=>{ S.travel.wishlist = S.travel.wishlist.filter(x=>x.id!==id); }); }
+function wishToTrip(id){
+  const w = S.travel.wishlist.find(x=>x.id===id); if(!w) return;
+  S.travel.wishlist = S.travel.wishlist.filter(x=>x.id!==id);
+  addTrip(w.place);
+}
+
+/* ================= ОКРУЖЕНИЕ ================= */
+function weeksSince(dateStr){
+  if(!dateStr) return 999;
+  return Math.floor((new Date(todayStr()) - new Date(dateStr)) / (7*86400000));
+}
+function vPeople(){
+  const list = [...S.people.contacts].sort((a,b)=>{
+    const oa = weeksSince(a.lastContact) - (a.intervalWeeks||4);
+    const ob = weeksSince(b.lastContact) - (b.intervalWeeks||4);
+    return ob - oa;
+  });
+  const overdueCnt = list.filter(c=>weeksSince(c.lastContact) >= (c.intervalWeeks||4)).length;
+  return `
+  <div class="page-head">
+    <div><h1>Окружение</h1><div class="sub">Важные люди рядом${overdueCnt?` · <span style="color:var(--red)">давно не общались: ${overdueCnt}</span>`:''}</div></div>
+    <button class="btn btn-primary" onclick="addContact()">+ Человек</button>
+  </div>
+  <div class="card">
+    ${list.map(c=>{
+      const w = weeksSince(c.lastContact);
+      const over = w >= (c.intervalWeeks||4);
+      return `<div class="item-row" style="flex-wrap:wrap">
+        <span class="member-avatar" style="background:${c.color};width:34px;height:34px;font-size:13px">${initials(c.name)}</span>
+        <div class="grow" style="flex:1;min-width:50%">
+          <div class="item-title">${esc(c.name)}</div>
+          <div class="item-meta">
+            ${c.tag?`<span class="chip">${esc(c.tag)}</span>`:''}
+            <span class="chip ${over?'red':''}">${c.lastContact ? (w===0?'на этой неделе':w+' нед. назад') : 'ещё не общались'}</span>
+            <span style="font-size:11px;color:var(--text3)">цель: раз в ${c.intervalWeeks||4} нед.</span>
+          </div>
+          ${c.notes?`<div class="notes-line" title="${esc(c.notes)}">${esc(c.notes)}</div>`:''}
+        </div>
+        <button class="btn ${over?'btn-primary':'btn-ghost'} btn-sm" onclick="touchContact('${c.id}')">✓ пообщались</button>
+        <button class="icon-btn" onclick="editContact('${c.id}')">✎</button>
+        <button class="icon-btn btn-danger" onclick="delContact('${c.id}')">✕</button>
+      </div>`;
+    }).join('') || emptyBig('🤝','Добавьте важных людей','Друзья, менторы, родные — трекер напомнит, если давно не общались')}
+  </div>`;
+}
+function contactForm(c){
+  c = c||{};
+  return `
+    <div class="field"><label>Имя</label><input name="name" required value="${esc(c.name||'')}"></div>
+    <div class="frow">
+      <div class="field"><label>Кто это</label><input name="tag" value="${esc(c.tag||'')}" placeholder="друг, ментор, брат…"></div>
+      <div class="field"><label>Общаться раз в</label><select name="intervalWeeks">
+        ${[[1,'неделю'],[2,'2 недели'],[4,'месяц'],[8,'2 месяца'],[12,'3 месяца'],[26,'полгода']].map(([v,l])=>`<option value="${v}" ${(c.intervalWeeks||4)===v?'selected':''}>${l}</option>`).join('')}
+      </select></div>
+    </div>
+    <div class="field"><label>Последний контакт</label><input name="lastContact" type="date" value="${c.lastContact||todayStr()}"></div>
+    <div class="field"><label>Заметки (дети, увлечения, о чём говорили)</label><textarea name="notes">${esc(c.notes||'')}</textarea></div>`;
+}
+function addContact(){
+  openModal('Важный человек', contactForm(), d=>{
+    if(!d.name.trim()) return false;
+    S.people.contacts.push({id:uid(), name:d.name.trim(), tag:d.tag.trim(), intervalWeeks:+d.intervalWeeks||4,
+      lastContact:d.lastContact||null, notes:d.notes.trim(),
+      color:AVATAR_COLORS[(S.people.contacts.length+4) % AVATAR_COLORS.length]});
+    save(); render();
+  }, 'Добавить');
+}
+function editContact(id){
+  const c = S.people.contacts.find(x=>x.id===id); if(!c) return;
+  openModal('Человек', contactForm(c), d=>{
+    Object.assign(c,{name:d.name.trim(), tag:d.tag.trim(), intervalWeeks:+d.intervalWeeks||4, lastContact:d.lastContact||null, notes:d.notes.trim()});
+    save(); render();
+  });
+}
+function touchContact(id){
+  const c = S.people.contacts.find(x=>x.id===id); if(!c) return;
+  c.lastContact = todayStr(); save(); render(); toast('Отлично! 🤝');
+}
+function delContact(id){ confirmDel('Удалить человека из списка?',()=>{ S.people.contacts = S.people.contacts.filter(x=>x.id!==id); }); }
+
+/* ================= WEEKLY REVIEW ================= */
+const MOODS = ['😞','😕','😐','🙂','🔥'];
+const MOOD_LABELS = ['ужасно','так себе','нормально','хорошо','огонь'];
+function setMood(date, score){
+  let m = S.mood.find(x=>x.date===date);
+  if(m && m.score===score){ S.mood = S.mood.filter(x=>x.date!==date); } // повторный тап — снять
+  else if(m){ m.score = score; }
+  else S.mood.push({date, score});
+  save(); render();
+}
+function vReview(){
+  const ws = weekStart();
+  const reviews = [...S.reviews].sort((a,b)=>b.weekStart.localeCompare(a.weekStart));
+  const thisWeek = S.reviews.find(r=>r.weekStart===ws);
+  const doneCnt = doneThisWeek();
+  const wk = modOn('sport') ? weekWorkouts(ws).length : null;
+  const overdue = overdueDayTasks().length;
+  const focuses = S.work.weekFocuses.filter(f=>f.weekStart===ws);
+  const focusDone = focuses.filter(f=>f.done).length;
+  const moodScores = S.mood.filter(m=>m.date >= addDays(todayStr(),-30)).sort((a,b)=>a.date.localeCompare(b.date));
+  const avgMood = moodScores.length ? (moodScores.reduce((s,m)=>s+m.score,0)/moodScores.length) : null;
+  return `
+  <div class="page-head">
+    <div><h1>Итоги недели</h1><div class="sub">10 минут рефлексии — самый дешёвый способ расти</div></div>
+    ${thisWeek?'':`<button class="btn btn-primary" onclick="addReview()">✍️ Подвести итоги недели</button>`}
+  </div>
+
+  <div class="grid grid2" style="margin-bottom:16px">
+    <div class="card">
+      <h2>📈 Эта неделя в цифрах</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px">
+        <div class="card" style="padding:12px;box-shadow:none">
+          <div style="font-size:11px;color:var(--text3)">✅ Задач выполнено</div>
+          <div style="font-size:20px;font-weight:700">${doneCnt}</div>
+        </div>
+        <div class="card" style="padding:12px;box-shadow:none">
+          <div style="font-size:11px;color:var(--text3)">🔥 Фокусы недели</div>
+          <div style="font-size:20px;font-weight:700">${focusDone}/${focuses.length||0}</div>
+        </div>
+        ${wk!==null?`<div class="card" style="padding:12px;box-shadow:none">
+          <div style="font-size:11px;color:var(--text3)">🏃 Тренировок</div>
+          <div style="font-size:20px;font-weight:700">${wk}/${S.sport.weeklyGoal}</div>
+        </div>`:''}
+        <div class="card" style="padding:12px;box-shadow:none">
+          <div style="font-size:11px;color:var(--text3)">⚠ Просрочено</div>
+          <div style="font-size:20px;font-weight:700;color:${overdue?'var(--red)':'var(--green)'}">${overdue}</div>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        ${thisWeek
+          ? `<div style="display:flex;align-items:center;gap:10px"><span class="chip green">итоги заполнены ✓</span>
+             <button class="btn btn-ghost btn-sm" onclick="editReview('${thisWeek.id}')">открыть</button></div>`
+          : `<button class="btn btn-primary btn-sm" onclick="addReview()">✍️ Заполнить итоги — сделанное подставится само</button>`}
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h2 style="margin:0">🧘 Настроение по дням</h2>
+        ${avgMood!==null?`<span class="chip violet">среднее за месяц: ${MOODS[Math.round(avgMood)-1]}</span>`:''}
+      </div>
+      <div class="mood-strip">
+        ${[0,1,2,3,4,5,6].map(i=>{
+          const d = addDays(ws,i);
+          const m = S.mood.find(x=>x.date===d);
+          const future = d > todayStr();
+          return `<div class="mood-day ${d===todayStr()?'today':''}">
+            <div class="d">${['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'][i]}<br>${+d.slice(8)}</div>
+            ${future ? '<div class="cur" style="opacity:.15">·</div>'
+              : m ? `<div class="cur" title="${MOOD_LABELS[m.score-1]}" style="cursor:pointer" onclick="setMood('${d}',${m.score})">${MOODS[m.score-1]}</div>`
+              : `<div class="smileys">${MOODS.map((e,k)=>`<button title="${MOOD_LABELS[k]}" onclick="setMood('${d}',${k+1})">${e}</button>`).join('')}</div>`}
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="hint" style="margin-top:10px">Один тап вечером. Повторный тап по смайлику — убрать оценку.</div>
+      ${moodScores.length>=5 ? sparkLine(moodScores.map(m=>m.score), 'var(--accent2)') : ''}
+    </div>
+  </div>
+
+  <h2 style="margin-bottom:12px">📜 История</h2>
+  ${reviews.length ? reviews.map(reviewCard).join('')
+    : `<div class="card">${emptyBig('📝','Ещё нет ни одного разбора недели','Три вопроса раз в неделю: что получилось, что нет, что дальше. Сделанное за неделю подставится автоматически')}</div>`}`;
+}
+function reviewCard(r){
+  const isCur = r.weekStart===weekStart();
+  const winsCnt = (r.wins||'').split('\n').filter(x=>x.trim()).length;
+  return `<details class="rev-item" ${isCur?'open':''}>
+    <summary>
+      <span style="font-size:20px">${MOODS[(r.mood||3)-1]}</span>
+      <b style="font-size:14px">${fmtDate(r.weekStart)} – ${fmtDate(addDays(r.weekStart,6))}</b>
+      ${isCur?'<span class="chip violet">текущая</span>':''}
+      <span class="chip green" style="margin-left:auto">${winsCnt} ${plural(winsCnt,'победа','победы','побед')}</span>
+    </summary>
+    <div class="body">
+      <div class="grid grid3">
+        <div><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:5px">✅ ПОЛУЧИЛОСЬ</div>
+          <div style="font-size:13px;white-space:pre-wrap;color:var(--text2);line-height:1.6">${esc(r.wins)||'—'}</div></div>
+        <div><div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:5px">✕ НЕ ПОЛУЧИЛОСЬ</div>
+          <div style="font-size:13px;white-space:pre-wrap;color:var(--text2);line-height:1.6">${esc(r.fails)||'—'}</div></div>
+        <div><div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:5px">→ ПЛАН НА СЛЕДУЮЩУЮ</div>
+          <div style="font-size:13px;white-space:pre-wrap;color:var(--text2);line-height:1.6">${esc(r.plans)||'—'}</div></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="btn btn-ghost btn-sm" onclick="editReview('${r.id}')">✎ Редактировать</button>
+        <button class="btn btn-ghost btn-sm btn-danger" onclick="delReview('${r.id}')">Удалить</button>
+      </div>
+    </div>
+  </details>`;
 }
 function reviewForm(r){
   r = r || {};
@@ -3230,6 +3839,39 @@ function fillDemo(){
     });
   }
   st.sport.weeklyGoal = 3;
+  st.settings.modules = { work:true, personal:true, budget:true, sport:true, review:true, health:true, learn:true, travel:true, people:true };
+  // здоровье
+  for(let k=13;k>=0;k--){
+    const d = addDays(T,-k);
+    st.health.metrics.push({id:uid(), date:d, weight: Math.round((82.6 - (13-k)*0.08)*10)/10,
+      sleep: 6.5 + (k%3)*0.5, energy: 3 + ((k+1)%3)});
+  }
+  st.health.vitamins = [{id:'vt1',name:'Витамин D'},{id:'vt2',name:'Омега-3'}];
+  st.health.vitaminLog[T] = ['vt1'];
+  st.health.checkups = [
+    {id:'ch1', name:'Стоматолог', intervalMonths:6, lastDate:addDays(T,-170)},
+    {id:'ch2', name:'Общие анализы', intervalMonths:12, lastDate:addDays(T,-100)}];
+  // обучение
+  st.learn.books = [
+    {id:'bk1', title:'Джедайские техники', author:'Максим Дорофеев', status:'reading'},
+    {id:'bk2', title:'Атомные привычки', author:'Джеймс Клир', status:'done', rating:5, doneAt:addDays(T,-20), note:'Система важнее мотивации'},
+    {id:'bk3', title:'Принципы', author:'Рэй Далио', status:'want'},
+    {id:'bk4', title:'Шантарам', status:'want'}];
+  st.learn.courses = [{id:'cr1', name:'Управление командой', total:20, done:12}];
+  // путешествия
+  st.travel.wishlist = [{id:'wl1',place:'Алтай'},{id:'wl2',place:'Стамбул'},{id:'wl3',place:'Байкал зимой'}];
+  st.travel.trips = [{id:'tr1', name:'Сочи, отпуск', start:addDays(T,32), end:addDays(T,41), budget:120000, budgetLinked:true,
+    checklist:[{id:uid(),t:'Билеты',done:true},{id:uid(),t:'Отель',done:true},{id:uid(),t:'Страховка',done:false},{id:uid(),t:'Аптечка',done:false}]}];
+  // окружение
+  st.people.contacts = [
+    {id:'pc1', name:'Дима Волков', tag:'лучший друг', intervalWeeks:2, lastContact:addDays(T,-25), notes:'Переехал в Казань, зовёт в гости', color:'#3b82f6'},
+    {id:'pc2', name:'Мария Петрова', tag:'ментор', intervalWeeks:4, lastContact:addDays(T,-10), notes:'Обсуждали рост до директора', color:'#a855f7'},
+    {id:'pc3', name:'Родители', tag:'семья', intervalWeeks:1, lastContact:addDays(T,-2), notes:'', color:'#10b981'}];
+  // настроение
+  for(let k=9;k>=0;k--){
+    const d = addDays(T,-k);
+    st.mood.push({date:d, score: 3 + ((k*7)%3)});
+  }
   st.sport.goals = [
     {id:'sg1',title:'50 пробежек за год',kind:'auto',metric:'count',sportType:'Бег',target:50,deadline:yr+'-12-31',current:0,unit:''},
     {id:'sg2',title:'Набегать 300 км',kind:'auto',metric:'distance',sportType:'Бег',target:300,deadline:null,current:0,unit:''},
@@ -3280,6 +3922,13 @@ function vSettings(){
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('importFile').click()">⬆ Импорт из файла</button>
         <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(this)">
       </div>
+      <h2 style="margin-top:26px">🧩 Разделы трекера</h2>
+      <div class="hint" style="margin-bottom:8px">Включайте только те сферы, которые хотите вести — меню подстроится.</div>
+      ${MODULES.map(m=>`<div class="mod-row">
+        <span style="font-size:17px">${m.icon}</span>
+        <span style="flex:1;font-size:14px">${m.name}</span>
+        <label class="switch"><input type="checkbox" ${modOn(m.id)?'checked':''} onchange="toggleModule('${m.id}', this.checked)"><span class="sl"></span></label>
+      </div>`).join('')}
       <h2 style="margin-top:26px">🎨 Оформление</h2>
       <div style="display:flex;align-items:center;gap:10px">
         <button class="btn btn-ghost btn-sm" onclick="openThemePicker()">Выбрать оформление</button>
@@ -3635,8 +4284,9 @@ function schedulePush(){
 /* --- merge-синхронизация: слияние изменений по элементам через базовый снимок --- */
 const SYNC_COLLECTIONS = ['work.yearGoals','work.quarterGoals','work.weekFocuses','work.dayTasks','work.team','work.teamTasks','work.recurring','work.projects',
   'personal.yearGoals','personal.projects','personal.tasks','personal.weekFocuses','personal.people','personal.ideas','personal.businesses',
-  'budget.plan','budget.planned','budget.transactions','budget.debts','budget.savings','sport.workouts','sport.goals','templates','reviews'];
-const SYNC_SCALARS = ['settings','budget.categories','budget.catIcons','sport.types','sport.weeklyGoal'];
+  'budget.plan','budget.planned','budget.transactions','budget.debts','budget.savings','sport.workouts','sport.goals','templates',
+  'health.metrics','health.vitamins','health.checkups','learn.books','learn.courses','travel.wishlist','travel.trips','people.contacts','mood','reviews'];
+const SYNC_SCALARS = ['settings','budget.categories','budget.catIcons','sport.types','sport.weeklyGoal','health.vitaminLog'];
 function getPath(o,p){ return p.split('.').reduce((a,k)=>a&&a[k], o); }
 function setPath(o,p,v){ const ks=p.split('.'); const last=ks.pop(); const t=ks.reduce((a,k)=>a[k], o); t[last]=v; }
 function stateSig(s){ const c = Object.assign({}, s); delete c.updatedAt; return JSON.stringify(c); }
