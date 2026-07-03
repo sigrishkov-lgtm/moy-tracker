@@ -60,6 +60,7 @@ const DEFAULT_STATE = () => ({
   personal: { yearGoals:[], projects:[], tasks:[], weekFocuses:[], people:[], ideas:[], businesses:[] },
   budget: { plan:[], planned:[], transactions:[], debts:[], savings:[], categories:DEF_CATS(), catIcons:Object.assign({},DEF_CAT_ICONS) },
   sport: { workouts:[], types:['Бег','Силовая','Плавание','Вело','Йога','Футбол','Теннис'], weeklyGoal:3, goals:[] },
+  templates: [],
   reviews: []
 });
 let S = load();
@@ -104,6 +105,7 @@ function migrate(s){
   if(!Array.isArray(s.sport.types) || !s.sport.types.length) s.sport.types = DEFAULT_STATE().sport.types;
   if(!s.sport.weeklyGoal) s.sport.weeklyGoal = 3;
   if(!Array.isArray(s.sport.goals)) s.sport.goals = [];
+  if(!Array.isArray(s.templates)) s.templates = [];
   // дедупликация повторяющихся задач (могла возникнуть при синхронизации)
   const seen = new Set();
   s.work.dayTasks = s.work.dayTasks.filter(t=>{
@@ -287,6 +289,16 @@ function sparkBars(values, colorFn){
     return `<rect x="${(i*step+1).toFixed(1)}" y="${(h-2-bh).toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" rx="1.5" fill="${colorFn?colorFn(v):'var(--accent)'}" opacity=".85"/>`;
   }).join('')}</svg>`;
 }
+/* --- теги --- */
+function parseTags(s){
+  return String(s||'').split(',').map(t=>t.trim().replace(/^#/,'').toLowerCase()).filter(Boolean).slice(0,8);
+}
+function tagChips(tags){
+  return (tags||[]).map(t=>`<span class="chip" style="color:var(--accent2)">#${esc(t)}</span>`).join('');
+}
+function tagsField(tags){
+  return `<div class="field"><label>Теги (через запятую)</label><input name="tags" value="${esc((tags||[]).join(', '))}" placeholder="ждёт-ответа, 5минут"></div>`;
+}
 /* --- drag&drop сортировка --- */
 let dragRowId=null, dragRowKind=null;
 function rowDragStart(e, kind, id){
@@ -306,6 +318,178 @@ function rowDrop(e, kind, targetId){
   arr.splice(to,0,it);
   dragRowId=null; save(); render();
 }
+/* --- импорт банковской выписки (CSV) --- */
+const CAT_KEYWORDS = [
+  ['Продукты', ['пятер','магнит','перекрест','лента','ашан','вкусвилл','дикси','продукт','супермаркет','азбука вкуса','самокат','лавка']],
+  ['Кафе и рестораны', ['кафе','ресторан','кофе','бургер','пицц','суши','доставка еды','деливери','delivery','яндекс еда','додо','kfc','макдон','вкусно и точка','шоколадница']],
+  ['Транспорт', ['такси','uber','метро','автобус','бензин','азс','лукойл','газпромнефт','роснефть','каршеринг','делимобиль','яндекс go','парковк','проезд']],
+  ['Здоровье', ['аптек','клиник','стоматол','анализ','врач','фитнес','спортзал','world class','медицин']],
+  ['Подписки', ['подписк','яндекс плюс','кинопоиск','иви','okko','netflix','spotify','apple.com','google','youtube','телеграм премиум']],
+  ['Развлечения', ['кино','театр','концерт','бар','клуб','боулинг','квест','steam','playstation']],
+  ['Одежда', ['одежд','обувь','wildberries','ozon','ламода','zara','спортмастер','h&m']],
+  ['Жильё', ['жкх','квартплат','аренда','коммунал','электроэнерг','интернет','ростелеком','мтс','билайн','мегафон']],
+  ['Образование', ['курс','школ','универ','книг','литрес','учеб']],
+  ['Зарплата', ['зарплат','заработн','аванс','оклад']],
+];
+function autoCategory(name, type){
+  const n = String(name||'').toLowerCase();
+  for(const [cat, words] of CAT_KEYWORDS){
+    if(words.some(w=>n.includes(w))){
+      if(type==='income' && cat!=='Зарплата') continue;
+      if(type==='expense' && cat==='Зарплата') continue;
+      return cat;
+    }
+  }
+  return 'Другое';
+}
+function parseCsvText(text){
+  const firstLine = text.split(/\r?\n/)[0] || '';
+  const delim = (firstLine.split(';').length > firstLine.split(',').length) ? ';' : ',';
+  const rows = [];
+  let row = [], cell = '', inQ = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQ){
+      if(c==='"' && text[i+1]==='"'){ cell+='"'; i++; }
+      else if(c==='"') inQ = false;
+      else cell += c;
+    } else {
+      if(c==='"') inQ = true;
+      else if(c===delim){ row.push(cell); cell=''; }
+      else if(c==='\n' || c==='\r'){
+        if(cell!=='' || row.length){ row.push(cell); rows.push(row); row=[]; cell=''; }
+        if(c==='\r' && text[i+1]==='\n') i++;
+      }
+      else cell += c;
+    }
+  }
+  if(cell!=='' || row.length){ row.push(cell); rows.push(row); }
+  return rows.filter(r=>r.some(x=>String(x).trim()!==''));
+}
+function parseCsvDate(s){
+  s = String(s||'').trim();
+  let m = s.match(/(\d{4})-(\d{2})-(\d{2})/);        // 2026-07-01
+  if(m) return m[1]+'-'+m[2];
+  m = s.match(/(\d{1,2})[./](\d{1,2})[./](\d{4})/);  // 01.07.2026
+  if(m) return m[3]+'-'+String(m[2]).padStart(2,'0');
+  return null;
+}
+function parseCsvAmount(s){
+  const n = parseFloat(String(s||'').replace(/\s|₽|руб\.?/gi,'').replace(',','.'));
+  return isNaN(n) ? null : n;
+}
+let _csvRows = null;
+function openCsvImport(){
+  _csvRows = null;
+  $('#modalRoot').innerHTML = `
+  <div class="modal-back" onclick="if(event.target===this)closeModal()">
+    <div class="modal" style="max-width:520px">
+      <h3>⬆ Импорт банковской выписки (CSV)</h3>
+      <div class="hint" style="margin-bottom:12px">Выгрузите операции из банка в CSV и выберите файл. Категории проставятся автоматически (Пятёрочка → Продукты, такси → Транспорт…), потом можно поправить.</div>
+      <input type="file" accept=".csv,text/csv" onchange="csvFileChosen(this)">
+      <div id="csvStep2" style="margin-top:14px"></div>
+      <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Отмена</button></div>
+    </div>
+  </div>`;
+}
+function csvFileChosen(input){
+  const f = input.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    _csvRows = parseCsvText(String(r.result));
+    if(!_csvRows.length){ document.getElementById('csvStep2').innerHTML = '<div class="hint" style="color:var(--red)">Не удалось разобрать файл</div>'; return; }
+    const cols = _csvRows[0].map((c,i)=>`<option value="${i}">${i+1}: ${esc(String(c).slice(0,28))}</option>`).join('');
+    const guess = (words)=>{ const h=_csvRows[0].map(c=>String(c).toLowerCase()); const idx=h.findIndex(c=>words.some(w=>c.includes(w))); return idx; };
+    const gd = guess(['дата','date']), ga = guess(['сумма','amount','сумм']), gn = guess(['описан','назнач','description','детали','категор','merchant','операц']);
+    document.getElementById('csvStep2').innerHTML = `
+      <div class="hint" style="margin-bottom:8px">Строк: ${_csvRows.length}. Укажите, где что:</div>
+      <div class="frow">
+        <div class="field"><label>Дата</label><select id="csvDate">${cols}</select></div>
+        <div class="field"><label>Сумма</label><select id="csvAmt">${cols}</select></div>
+        <div class="field"><label>Описание</label><select id="csvName">${cols}</select></div>
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:8px">
+        <input type="checkbox" id="csvHeader" checked style="width:auto"> Первая строка — заголовки</label>
+      <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:12px">
+        <input type="checkbox" id="csvNeg" checked style="width:auto"> Отрицательные суммы — расходы, положительные — доходы</label>
+      <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="runCsvImport()">Импортировать</button>`;
+    if(gd>=0) document.getElementById('csvDate').value = gd;
+    if(ga>=0) document.getElementById('csvAmt').value = ga;
+    if(gn>=0) document.getElementById('csvName').value = gn;
+  };
+  r.readAsText(f, 'utf-8');
+}
+function runCsvImport(){
+  const di = +document.getElementById('csvDate').value;
+  const ai = +document.getElementById('csvAmt').value;
+  const ni = +document.getElementById('csvName').value;
+  const skipHeader = document.getElementById('csvHeader').checked;
+  const negExpense = document.getElementById('csvNeg').checked;
+  const rows = skipHeader ? _csvRows.slice(1) : _csvRows;
+  let added = 0, skipped = 0;
+  rows.forEach(r=>{
+    const month = parseCsvDate(r[di]);
+    const raw = parseCsvAmount(r[ai]);
+    const name = String(r[ni]||'').trim().slice(0,80) || 'Операция';
+    if(!month || raw===null || raw===0){ skipped++; return; }
+    const type = negExpense ? (raw<0?'expense':'income') : 'expense';
+    const amount = Math.abs(Math.round(raw*100)/100);
+    if(S.budget.transactions.some(t=>t.month===month && t.amount===amount && t.name===name && t.type===type)){ skipped++; return; }
+    S.budget.transactions.push({id:uid(), type, name, amount, month, category:autoCategory(name, type)});
+    added++;
+  });
+  save(); closeModal(); render();
+  toast(`Импортировано: ${added}${skipped?' · пропущено: '+skipped:''}`);
+}
+
+/* --- шаблоны проектов --- */
+function saveAsTemplate(scope, projectId){
+  let p, taskTitles;
+  if(scope==='personal'){
+    p = S.personal.projects.find(x=>x.id===projectId);
+    taskTitles = S.personal.tasks.filter(t=>t.projectId===projectId).map(t=>t.title);
+  } else {
+    p = S.work.projects.find(x=>x.id===projectId);
+    taskTitles = S.work.teamTasks.filter(t=>t.projectId===projectId).map(t=>t.title);
+  }
+  if(!p) return;
+  openModal('Сохранить как шаблон', `
+    <div class="field"><label>Название шаблона</label><input name="name" required value="${esc(p.name)}"></div>
+    <div class="hint">Сохранится структура: иконка, описание и ${taskTitles.length} ${plural(taskTitles.length,'задача','задачи','задач')} (без дат и исполнителей). Потом создадите такой проект в один клик.</div>
+  `, d=>{
+    if(!d.name.trim()) return false;
+    S.templates.push({id:uid(), scope, name:d.name.trim(), icon:p.icon||(scope==='personal'?'🚀':'📁'), desc:p.desc||'', tasks:taskTitles});
+    save(); render(); toast('Шаблон сохранён ✓');
+  });
+}
+function createFromTemplate(scope){
+  const list = S.templates.filter(t=>t.scope===scope);
+  if(!list.length){ toast('Пока нет шаблонов — сохраните проект как шаблон (кнопка ⧉)'); return; }
+  openModal('Проект из шаблона', `
+    <div class="field"><label>Шаблон</label><select name="tpl">
+      ${list.map(t=>`<option value="${t.id}">${esc(t.icon)} ${esc(t.name)} · ${t.tasks.length} задач</option>`).join('')}
+    </select></div>
+    <div class="field"><label>Название нового проекта</label><input name="name" placeholder="Пусто — как у шаблона"></div>
+  `, d=>{
+    const tpl = S.templates.find(t=>t.id===d.tpl); if(!tpl) return false;
+    const name = d.name.trim() || tpl.name;
+    if(scope==='personal'){
+      const pid = uid();
+      S.personal.projects.push({id:pid, name, icon:tpl.icon, desc:tpl.desc, status:'active', partnerIds:[],
+        color:PROJ_COLORS[S.personal.projects.length % PROJ_COLORS.length]});
+      tpl.tasks.forEach(tt=>S.personal.tasks.push({id:uid(), projectId:pid, title:tt, done:false}));
+    } else {
+      const pid = uid();
+      S.work.projects.push({id:pid, name, icon:tpl.icon, desc:tpl.desc, deadline:null, status:'active', memberIds:[],
+        color:PROJ_COLORS[(S.work.projects.length+3) % PROJ_COLORS.length]});
+      const firstMember = S.work.team[0];
+      tpl.tasks.forEach(tt=>S.work.teamTasks.push({id:uid(), projectId:pid, memberId:firstMember?firstMember.id:null, title:tt, deadline:null, status:'todo'}));
+    }
+    save(); render(); toast('Проект создан из шаблона 🚀');
+  }, 'Создать');
+}
+function delTemplate(id){ confirmDel('Удалить шаблон?',()=>{ S.templates=S.templates.filter(t=>t.id!==id); }); }
+
 /* --- иконки категорий бюджета --- */
 function catIcon(name){ return (S.budget.catIcons||{})[name] || '🏷️'; }
 function editCatIcons(){
@@ -721,7 +905,7 @@ function doSearch(q){
   if(!q || q.length<2){ out.innerHTML=''; return; }
   const hit = s => String(s||'').toLowerCase().includes(q);
   const res = [];
-  S.work.dayTasks.forEach(x=>{ if(hit(x.title)||hit(x.notes)) res.push({l:x.title, s:'✅ задача · '+(x.date?fmtDate(x.date):'инбокс'), v:'work', t:['work','week']}); });
+  S.work.dayTasks.forEach(x=>{ if(hit(x.title)||hit(x.notes)||(x.tags||[]).some(hit)) res.push({l:x.title, s:'✅ задача · '+(x.date?fmtDate(x.date):'инбокс'), v:'work', t:['work','week']}); });
   S.work.teamTasks.forEach(x=>{ if(hit(x.title)||hit(x.notes)){ const m=S.work.team.find(y=>y.id===x.memberId);
     res.push({l:x.title, s:'👥 '+(m?m.name:'команда'), v:'work', t:['work','team']}); }});
   S.work.team.forEach(x=>{ if(hit(x.name)||hit(x.role)||hit(x.focus)) res.push({l:x.name, s:'👤 '+(x.role||'команда'), v:'work', t:['work','team']}); });
@@ -857,6 +1041,7 @@ function dayTaskRow(x){
   if(x.time) meta.push(`<span class="chip blue">⏰ ${x.time}</span>`);
   if(prTxt) meta.push(`<span class="chip ${pr}">${prTxt}</span>`);
   if(x.recId) meta.push('<span class="chip">🔁</span>');
+  if(x.tags && x.tags.length) meta.push(tagChips(x.tags));
   return `<div class="item-row ${x.done?'done':''}" draggable="true" ondragstart="rowDragStart(event,'day','${x.id}')" ondragend="rowDragEnd(event)" ondragover="event.preventDefault()" ondrop="rowDrop(event,'day','${x.id}')">
     <span class="drag-handle">⠿</span>
     <button class="checkbox ${x.done?'on':''}" onclick="toggleDayTask('${x.id}')">${x.done?'✓':''}</button>
@@ -921,8 +1106,11 @@ function workWeek(){
   const day = SUB.workDay || todayStr();
   ensureRecurring(day);
   const focuses = S.work.weekFocuses.filter(f=>f.weekStart===ws);
-  const tasks = S.work.dayTasks.filter(x=>x.date===day)
+  const tagFilter = SUB.dayTag || '';
+  let tasks = S.work.dayTasks.filter(x=>x.date===day)
     .sort((a,b)=>(a.done-b.done)); // порядок настраивается перетаскиванием
+  const dayTags = [...new Set(tasks.flatMap(t=>t.tags||[]))];
+  if(tagFilter) tasks = tasks.filter(t=>(t.tags||[]).includes(tagFilter));
   const doneCnt = tasks.filter(x=>x.done).length;
   const dayDate = new Date(day+'T12:00:00');
   const inbox = S.work.dayTasks.filter(x=>!x.date && !x.done);
@@ -986,6 +1174,10 @@ function workWeek(){
       <div class="quick-add" style="margin-bottom:8px">
         <input placeholder="Добавить задачу… (Enter)" onkeydown="if(event.key==='Enter'&&this.value.trim()){quickAddDay(this.value.trim(),'${day}');this.value=''}">
       </div>
+      ${dayTags.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        ${dayTags.map(t=>`<button class="chip ${tagFilter===t?'violet':''}" onclick="setSub('dayTag','${t}'===('${tagFilter}')?'':'${t}')">#${esc(t)}</button>`).join('')}
+        ${tagFilter?`<button class="chip red" onclick="setSub('dayTag','')">✕ сброс</button>`:''}
+      </div>`:''}
       ${tasks.length?`<div class="sub" style="margin-bottom:6px">${doneCnt} из ${tasks.length} выполнено</div>
       <div class="progress green" style="margin-bottom:10px"><div style="width:${tasks.length?Math.round(doneCnt/tasks.length*100):0}%"></div></div>`:''}
       ${tasks.length ? tasks.map(dayTaskRow).join('') : '<div class="empty">Задач нет</div>'}
@@ -1033,10 +1225,11 @@ function addDayTask(date){
         <option value="mid">Средний</option><option value="high">Высокий</option><option value="low">Низкий</option>
       </select></div>
     </div>
+    ${tagsField()}
     <div class="field"><label>Заметка</label><textarea name="notes" placeholder="Контекст, ссылки, детали"></textarea></div>
   `, d=>{
     if(!d.title.trim()) return false;
-    S.work.dayTasks.push({id:uid(), title:d.title.trim(), date:d.date||null, time:d.time||null, priority:d.priority, notes:d.notes.trim(), done:false});
+    S.work.dayTasks.push({id:uid(), title:d.title.trim(), date:d.date||null, time:d.time||null, priority:d.priority, tags:parseTags(d.tags), notes:d.notes.trim(), done:false});
     save(); render();
   }, 'Добавить');
 }
@@ -1051,8 +1244,9 @@ function editDayTask(id){
         ${['mid','high','low'].map(p=>`<option value="${p}" ${t.priority===p?'selected':''}>${{mid:'Средний',high:'Высокий',low:'Низкий'}[p]}</option>`).join('')}
       </select></div>
     </div>
+    ${tagsField(t.tags)}
     <div class="field"><label>Заметка</label><textarea name="notes">${esc(t.notes||'')}</textarea></div>
-  `, d=>{ Object.assign(t,{title:d.title.trim(), date:d.date||null, time:d.time||null, priority:d.priority, notes:d.notes.trim()}); save(); render(); });
+  `, d=>{ Object.assign(t,{title:d.title.trim(), date:d.date||null, time:d.time||null, priority:d.priority, tags:parseTags(d.tags), notes:d.notes.trim()}); save(); render(); });
 }
 function toggleDayTask(id){
   const t=S.work.dayTasks.find(x=>x.id===id);
@@ -1138,7 +1332,10 @@ function workTeam(){
   return `
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
     <h2 style="margin:0">📁 Рабочие проекты</h2>
-    <button class="btn btn-primary btn-sm" onclick="addWorkProject()">+ Проект</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="createFromTemplate('work')">⧉ Из шаблона</button>
+      <button class="btn btn-primary btn-sm" onclick="addWorkProject()">+ Проект</button>
+    </div>
   </div>
   ${S.work.projects.length ? `<div class="grid grid2" style="margin-bottom:24px">${[...S.work.projects]
       .sort((a,b)=>((a.status==='done')-(b.status==='done')))
@@ -1165,12 +1362,13 @@ function workProjectCard(p){
   const active = tasks.filter(t=>t.status!=='done');
   const pct = tasks.length ? Math.round(tasks.filter(t=>t.status==='done').length/tasks.length*100) : 0;
   const st = P_STATUS[p.status||'active'];
-  return `<div class="card" style="border-top:3px solid ${p.color};${p.status==='done'?'opacity:.65':''}">
+  return `<div class="card" style="border-top:3px solid ${p.color||'var(--accent)'};${p.status==='done'?'opacity:.65':''}">
     <div style="display:flex;align-items:flex-start;gap:10px">
       <div class="grow" style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:15.5px">${esc(p.icon||'📁')} ${esc(p.name)} <span class="chip ${st[1]}" style="vertical-align:2px">${st[0]}</span></div>
         ${p.desc?`<div class="sub">${esc(p.desc)}</div>`:''}
       </div>
+      <button class="icon-btn" title="Сохранить как шаблон" onclick="saveAsTemplate('work','${p.id}')">⧉</button>
       <button class="icon-btn" onclick="editWorkProject('${p.id}')">✎</button>
       <button class="icon-btn btn-danger" onclick="delWorkProject('${p.id}')">✕</button>
     </div>
@@ -1312,7 +1510,7 @@ function memberCard(m){
           <div class="item-meta">
             <button class="chip ${cls}" onclick="cycleTeamTask('${t.id}')" title="Сменить статус">${lbl}</button>
             ${proj?`<span class="chip" style="color:${proj.color}">${esc(proj.icon||'📁')} ${esc(proj.name)}</span>`:''}
-            ${deadlineChip(t.deadline)} ${subChip(t)}
+            ${deadlineChip(t.deadline)} ${subChip(t)} ${tagChips(t.tags)}
             <button class="chip" onclick="addSub('team','${t.id}')" title="Добавить подзадачу">＋ шаг</button>
           </div>
           ${t.notes?`<div class="notes-line" title="${esc(t.notes)}">${esc(t.notes)}</div>`:''}
@@ -1396,11 +1594,12 @@ function addTeamTask(memberId, projectId){
       ${candidates.map(m=>`<option value="${m.id}" ${memberId===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}
     </select></div>
     ${workProjSelect(projectId)}
+    ${tagsField()}
     <div class="field"><label>Заметка</label><textarea name="notes"></textarea></div>
   `, d=>{
     if(!d.title.trim()) return false;
     const t = {id:uid(), memberId:d.memberId||memberId, projectId:d.projectId||projectId||null,
-      title:d.title.trim(), deadline:d.deadline, notes:d.notes.trim()};
+      title:d.title.trim(), deadline:d.deadline, tags:parseTags(d.tags), notes:d.notes.trim()};
     setTeamStatus(t, d.status);
     S.work.teamTasks.push(t);
     save(); render();
@@ -1420,9 +1619,10 @@ function editTeamTask(id){
       ${S.work.team.map(m=>`<option value="${m.id}" ${t.memberId===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}
     </select></div>
     ${workProjSelect(t.projectId)}
+    ${tagsField(t.tags)}
     <div class="field"><label>Заметка</label><textarea name="notes">${esc(t.notes||'')}</textarea></div>
   `, d=>{
-    Object.assign(t,{title:d.title.trim(), deadline:d.deadline, memberId:d.memberId, projectId:d.projectId||null, notes:d.notes.trim()});
+    Object.assign(t,{title:d.title.trim(), deadline:d.deadline, memberId:d.memberId, projectId:d.projectId||null, tags:parseTags(d.tags), notes:d.notes.trim()});
     if(d.status!==t.status) setTeamStatus(t, d.status);
     save(); render();
   });
@@ -1547,7 +1747,7 @@ function persTaskRow(x){
     <span class="drag-handle">⠿</span>
     <button class="checkbox ${x.done?'on':''}" onclick="togglePersTask('${x.id}')">${x.done?'✓':''}</button>
     <div class="grow" style="flex:1;min-width:55%"><div class="item-title">${esc(x.title)}</div>
-      <div class="item-meta">${x.priority==='high'?'<span class="chip red">важно</span>':''}${assigneeChip(x.assigneeId)}${deadlineChip(x.deadline)} ${subChip(x)}
+      <div class="item-meta">${x.priority==='high'?'<span class="chip red">важно</span>':''}${assigneeChip(x.assigneeId)}${deadlineChip(x.deadline)} ${subChip(x)} ${tagChips(x.tags)}
       <button class="chip" onclick="addSub('pers','${x.id}')" title="Добавить подзадачу">＋ шаг</button></div>
       ${x.notes?`<div class="notes-line" title="${esc(x.notes)}">${esc(x.notes)}</div>`:''}</div>
     <button class="icon-btn" onclick="editPersTask('${x.id}')">✎</button>
@@ -1641,7 +1841,10 @@ function persProjects(){
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
     <h2 style="margin:0">🚀 Проекты</h2>
-    <button class="btn btn-primary btn-sm" onclick="addProject()">+ Проект</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="createFromTemplate('personal')">⧉ Из шаблона</button>
+      <button class="btn btn-primary btn-sm" onclick="addProject()">+ Проект</button>
+    </div>
   </div>
   ${S.personal.projects.length ? `<div class="grid grid2">${[...S.personal.projects]
       .sort((a,b)=>((a.status==='done')-(b.status==='done')))
@@ -1655,12 +1858,13 @@ function projectCard(p){
   const pct = tasks.length ? Math.round(done/tasks.length*100) : 0;
   const st = P_STATUS[p.status||'active'];
   const partners = (p.partnerIds||[]).map(id=>S.personal.people.find(x=>x.id===id)).filter(Boolean);
-  return `<div class="card" style="border-top:3px solid ${p.color};${p.status==='done'?'opacity:.65':''}">
+  return `<div class="card" style="border-top:3px solid ${p.color||'var(--accent)'};${p.status==='done'?'opacity:.65':''}">
     <div style="display:flex;align-items:flex-start;gap:10px">
       <div class="grow" style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:15.5px">${esc(p.icon||'🚀')} ${esc(p.name)} <span class="chip ${st[1]}" style="vertical-align:2px">${st[0]}</span></div>
         ${p.desc?`<div class="sub">${esc(p.desc)}</div>`:''}
       </div>
+      <button class="icon-btn" title="Сохранить как шаблон" onclick="saveAsTemplate('personal','${p.id}')">⧉</button>
       <button class="icon-btn" onclick="editProject('${p.id}')">✎</button>
       <button class="icon-btn btn-danger" onclick="delProject('${p.id}')">✕</button>
     </div>
@@ -1738,10 +1942,11 @@ function addPersTask(projectId){
       </select></div>
     </div>
     ${assigneeSelect(null)}
+    ${tagsField()}
     <div class="field"><label>Заметка</label><textarea name="notes"></textarea></div>
   `, d=>{
     if(!d.title.trim()) return false;
-    S.personal.tasks.push({id:uid(), projectId, title:d.title.trim(), deadline:d.deadline, priority:d.priority, assigneeId:d.assigneeId||null, notes:d.notes.trim(), done:false});
+    S.personal.tasks.push({id:uid(), projectId, title:d.title.trim(), deadline:d.deadline, priority:d.priority, assigneeId:d.assigneeId||null, tags:parseTags(d.tags), notes:d.notes.trim(), done:false});
     save(); render();
   }, 'Добавить');
 }
@@ -1760,8 +1965,9 @@ function editPersTask(id){
       ${S.personal.projects.map(p=>`<option value="${p.id}" ${t.projectId===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}
     </select></div>
     ${assigneeSelect(t.assigneeId)}
+    ${tagsField(t.tags)}
     <div class="field"><label>Заметка</label><textarea name="notes">${esc(t.notes||'')}</textarea></div>
-  `, d=>{ Object.assign(t,{title:d.title.trim(), deadline:d.deadline, priority:d.priority, projectId:d.projectId, assigneeId:d.assigneeId||null, notes:d.notes.trim()}); save(); render(); });
+  `, d=>{ Object.assign(t,{title:d.title.trim(), deadline:d.deadline, priority:d.priority, projectId:d.projectId, assigneeId:d.assigneeId||null, tags:parseTags(d.tags), notes:d.notes.trim()}); save(); render(); });
 }
 function togglePersTask(id){
   const t=S.personal.tasks.find(x=>x.id===id);
@@ -1834,7 +2040,7 @@ function bizCard(b){
   const yearFin = fin.filter(f=>f.month.slice(0,4)===String(curYear()));
   const yearProfit = yearFin.reduce((s,f)=>s+(f.revenue||0)-(f.expenses||0),0);
   const activeTasks = b.tasks.filter(t=>!t.done);
-  return `<div class="card" style="border-top:3px solid ${b.color}">
+  return `<div class="card" style="border-top:3px solid ${b.color||'var(--accent)'}">
     <div style="display:flex;align-items:flex-start;gap:10px">
       <div class="grow" style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:15.5px">${esc(b.icon||'🏢')} ${esc(b.name)} <span class="chip ${st[1]}" style="vertical-align:2px">${st[0]}</span></div>
@@ -2097,7 +2303,8 @@ function budgetMonth(){
     </div>`;
   };
   return `
-  <div style="display:flex;justify-content:center;margin-bottom:16px">
+  <div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="btn btn-ghost btn-sm" onclick="openCsvImport()">⬆ Импорт CSV</button>
     <div class="week-nav card" style="padding:8px 14px">
       <button class="icon-btn" onclick="setSub('budgetMonth','${prevM}')">‹</button>
       <b style="font-size:14.5px;min-width:130px;text-align:center;cursor:pointer" title="Выбрать месяц" onclick="pickMonth('${m}', v=>setSub('budgetMonth',v))">${fmtMonth(m)}</b>
@@ -3215,6 +3422,9 @@ function renderAuth(msg, isError){
       <div class="field"><label>Email</label><input id="authEmail" type="email" placeholder="you@example.com" autocomplete="username"></div>
       <div class="field"><label>Пароль</label><input id="authPass" type="password" placeholder="минимум 6 символов" autocomplete="current-password"
         onkeydown="if(event.key==='Enter')authSubmit()"></div>
+      <div style="text-align:right;margin:-6px 0 10px">
+        <button style="font-size:12.5px;color:var(--text3);text-decoration:underline" onclick="renderReset(1)">Забыли пароль?</button>
+      </div>
       <div id="authMsg" style="font-size:13px;min-height:18px;margin-bottom:10px;color:${isError?'var(--red)':'var(--green)'}">${msg||''}</div>
       <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" id="authBtn" onclick="authSubmit()">Войти</button>
       <div style="text-align:center;margin-top:16px">
@@ -3257,6 +3467,109 @@ async function authSubmit(){
     btn.disabled=false; btn.textContent = authMode==='login'?'Войти':'Создать аккаунт';
   }
 }
+/* --- восстановление пароля по коду из письма (работает через прокси, без VPN) --- */
+let resetEmail = '';
+function renderReset(step, msg, isErr){
+  document.querySelector('.app').style.display='none';
+  document.querySelector('.bottomnav').style.display='none';
+  $('#modalRoot').innerHTML = `
+  <div style="position:fixed;inset:0;background:var(--bg);z-index:90;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto">
+    <div class="card" style="width:100%;max-width:400px;padding:30px">
+      <div style="font-weight:700;font-size:18px;margin-bottom:6px">🔑 Восстановление пароля</div>
+      <div class="sub" style="margin-bottom:18px">${step===1?'Пришлём код на вашу почту':'Введите код из письма и новый пароль'}</div>
+      ${step===1 ? `
+        <div class="field"><label>Email</label><input id="resetEmail" type="email" placeholder="you@example.com" value="${esc(resetEmail)}"
+          onkeydown="if(event.key==='Enter')sendResetCode()"></div>`
+      : step===3 ? `
+        <div class="field"><label>Новый пароль</label><input id="resetPass" type="password" placeholder="минимум 6 символов" autocomplete="new-password"
+          onkeydown="if(event.key==='Enter')submitNewPass()"></div>`
+      : `
+        <div class="hint" style="margin-bottom:12px">Мы отправили письмо. <b>Перейдите по ссылке из письма</b> — откроется форма нового пароля. Если в письме есть код — введите его ниже.</div>
+        <div class="field"><label>Код из письма (если есть)</label><input id="resetToken" inputmode="numeric" placeholder="6 цифр" autocomplete="one-time-code"></div>
+        <div class="field"><label>Новый пароль</label><input id="resetPass" type="password" placeholder="минимум 6 символов" autocomplete="new-password"
+          onkeydown="if(event.key==='Enter')submitReset()"></div>`}
+      <div id="resetMsg" style="font-size:13px;min-height:18px;margin-bottom:10px;color:${isErr?'var(--red)':'var(--green)'}">${msg||''}</div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" id="resetBtn"
+        onclick="${step===1?'sendResetCode()':step===3?'submitNewPass()':'submitReset()'}">${step===1?'Отправить письмо':'Сменить пароль и войти'}</button>
+      <div style="text-align:center;margin-top:14px;display:flex;gap:14px;justify-content:center">
+        ${step===2?`<button style="font-size:12.5px;color:var(--text3);text-decoration:underline" onclick="sendResetCode(true)">Отправить код ещё раз</button>`:''}
+        <button style="font-size:12.5px;color:var(--text3);text-decoration:underline" onclick="renderAuth()">← Ко входу</button>
+      </div>
+    </div>
+  </div>`;
+}
+async function sendResetCode(resend){
+  const inp = document.getElementById('resetEmail');
+  if(inp) resetEmail = inp.value.trim();
+  if(!resetEmail){ renderReset(1,'Введите email',true); return; }
+  const btn = document.getElementById('resetBtn'); if(btn){ btn.disabled=true; btn.textContent='…'; }
+  try{
+    await authRequest('recover', {email: resetEmail});
+    renderReset(2, 'Письмо отправлено на '+resetEmail+' (проверьте и «Спам»)');
+  }catch(e){
+    renderReset(resend?2:1, /rate/i.test(e.message)?'Слишком часто — подождите минуту':e.message, true);
+  }
+}
+async function submitReset(){
+  const token = (document.getElementById('resetToken')||{}).value.trim();
+  const pass = (document.getElementById('resetPass')||{}).value;
+  const msg = document.getElementById('resetMsg');
+  if(!token || pass.length<6){ msg.style.color='var(--red)'; msg.textContent='Введите код и пароль от 6 символов'; return; }
+  const btn = document.getElementById('resetBtn'); btn.disabled=true; btn.textContent='…';
+  try{
+    const j = await authRequest('verify', {type:'recovery', email: resetEmail, token});
+    if(!j.access_token) throw new Error('Неверный код');
+    saveSession(sessFromResponse(j));
+    const r = await fetch(apiBase()+'/auth/v1/user', {
+      method:'PUT',
+      headers:{ 'apikey':AUTH_CONFIG.anonKey, 'Authorization':'Bearer '+SESSION.access_token, 'Content-Type':'application/json' },
+      body: JSON.stringify({password: pass})
+    });
+    if(!r.ok){ const je = await r.json().catch(()=>({})); throw new Error(je.msg||'Не удалось сменить пароль'); }
+    toast('Пароль обновлён ✓');
+    await bootAfterLogin();
+  }catch(e){
+    btn.disabled=false; btn.textContent='Сменить пароль и войти';
+    msg.style.color='var(--red)';
+    msg.textContent = /invalid|expired|not found/i.test(e.message)?'Код неверный или устарел — запросите новый':e.message;
+  }
+}
+
+function handleRecoveryHash(){
+  try{
+    const p = new URLSearchParams(location.hash.slice(1));
+    if(!p.get('access_token')) return false;
+    saveSession({
+      access_token: p.get('access_token'),
+      refresh_token: p.get('refresh_token') || '',
+      expires_at: Date.now() + (parseInt(p.get('expires_in')||'3600',10))*1000,
+      user: { id:'', email:'' }
+    });
+    history.replaceState(null, '', location.pathname);
+    renderReset(3, 'Ссылка принята — задайте новый пароль');
+    return true;
+  }catch(e){ return false; }
+}
+async function submitNewPass(){
+  const pass = (document.getElementById('resetPass')||{}).value;
+  const msg = document.getElementById('resetMsg');
+  if(pass.length<6){ msg.style.color='var(--red)'; msg.textContent='Пароль от 6 символов'; return; }
+  const btn = document.getElementById('resetBtn'); btn.disabled=true; btn.textContent='…';
+  try{
+    const hdrs = { 'apikey':AUTH_CONFIG.anonKey, 'Authorization':'Bearer '+SESSION.access_token, 'Content-Type':'application/json' };
+    const r = await fetch(apiBase()+'/auth/v1/user', {method:'PUT', headers:hdrs, body:JSON.stringify({password:pass})});
+    if(!r.ok){ const je = await r.json().catch(()=>({})); throw new Error(je.msg||'Ссылка устарела — запросите новую'); }
+    const u = await fetch(apiBase()+'/auth/v1/user', {headers:hdrs}).then(x=>x.json());
+    SESSION.user = { id:u.id, email:u.email };
+    saveSession(SESSION);
+    toast('Пароль обновлён ✓');
+    await bootAfterLogin();
+  }catch(e){
+    btn.disabled=false; btn.textContent='Сменить пароль и войти';
+    msg.style.color='var(--red)'; msg.textContent = e.message;
+  }
+}
+
 function skipAuth(){
   localStorage.setItem('mytracker_localmode','1');
   enterApp();
@@ -3323,7 +3636,7 @@ function schedulePush(){
 /* --- merge-синхронизация: слияние изменений по элементам через базовый снимок --- */
 const SYNC_COLLECTIONS = ['work.yearGoals','work.quarterGoals','work.weekFocuses','work.dayTasks','work.team','work.teamTasks','work.recurring','work.projects',
   'personal.yearGoals','personal.projects','personal.tasks','personal.weekFocuses','personal.people','personal.ideas','personal.businesses',
-  'budget.plan','budget.planned','budget.transactions','budget.debts','budget.savings','sport.workouts','sport.goals','reviews'];
+  'budget.plan','budget.planned','budget.transactions','budget.debts','budget.savings','sport.workouts','sport.goals','templates','reviews'];
 const SYNC_SCALARS = ['settings','budget.categories','budget.catIcons','sport.types','sport.weeklyGoal'];
 function getPath(o,p){ return p.split('.').reduce((a,k)=>a&&a[k], o); }
 function setPath(o,p,v){ const ks=p.split('.'); const last=ks.pop(); const t=ks.reduce((a,k)=>a[k], o); t[last]=v; }
@@ -3464,7 +3777,9 @@ if(typeof navigator!=='undefined' && 'serviceWorker' in navigator){
 applyTheme();
 dailyBackup();
 if(authConfigured()){ resolveApiBase(false).catch(()=>{}); }
-if(authConfigured() && !SESSION && !localStorage.getItem('mytracker_localmode')){
+if(authConfigured() && typeof location!=='undefined' && /type=recovery/.test(location.hash||'') && handleRecoveryHash()){
+  // пользователь пришёл по ссылке восстановления — форма нового пароля уже показана
+} else if(authConfigured() && !SESSION && !localStorage.getItem('mytracker_localmode')){
   renderAuth();
   if(location.hash==='#signup'){ // переход с лендинга «Начать бесплатно»
     setTimeout(()=>{ try{ authTab('signup'); }catch(e){} }, 50);
