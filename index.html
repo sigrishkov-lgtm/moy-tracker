@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f1117">
+<title>Мой Трекер — работа, проекты, бюджет и спорт в одном месте</title>
+<meta name="description" content="Личный трекер: цели и команда на работе, свои проекты и бизнес, бюджет с прогнозом кэшфлоу, спорт и итоги недели. Бесплатно.">
+<script>
+/* уже вошедших сразу отправляем в приложение */
+try{
+  if(localStorage.getItem('mytracker_session') || localStorage.getItem('mytracker_localmode')){
+    location.replace('app.html');
+  }
+}catch(e){}
+</script>
+<style>
+:root{
+  --bg:#0f1117; --bg2:#141722; --surface:#1a1e2b; --border:#2a3044;
+  --text:#eef0f6; --text2:#9aa3b8; --text3:#6b7385;
+  --accent:#7c6cf5; --accent2:#a78bfa; --grad:linear-gradient(135deg,#6366f1,#a855f7);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+a{text-decoration:none; color:inherit}
+.wrap{max-width:1080px; margin:0 auto; padding:0 22px}
+/* header */
+header{display:flex; align-items:center; justify-content:space-between; padding:22px 0}
+.logo{display:flex; align-items:center; gap:10px; font-weight:700; font-size:17px}
+.logo-badge{width:36px;height:36px;border-radius:11px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;
+  padding:12px 26px;border-radius:12px;font-size:15px;font-weight:600;font-family:inherit;transition:.2s}
+.btn-primary{background:var(--grad);color:#fff;box-shadow:0 8px 28px rgba(124,108,245,.35)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 34px rgba(124,108,245,.45)}
+.btn-ghost{background:var(--surface);color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{color:var(--text)}
+/* hero */
+.hero{text-align:center; padding:64px 0 40px; position:relative}
+.hero::before{content:'';position:absolute;top:-160px;left:50%;transform:translateX(-50%);
+  width:820px;height:520px;background:radial-gradient(ellipse, rgba(124,108,245,.22), transparent 65%);pointer-events:none}
+.hero h1{font-size:52px;font-weight:800;letter-spacing:-.03em;line-height:1.12;position:relative}
+.hero h1 .grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{font-size:19px;color:var(--text2);max-width:640px;margin:22px auto 0;line-height:1.6;position:relative}
+.cta{display:flex;gap:14px;justify-content:center;margin-top:34px;flex-wrap:wrap;position:relative}
+.hero .note{font-size:13px;color:var(--text3);margin-top:16px;position:relative}
+/* mockup */
+.mock{margin:56px auto 0;max-width:860px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:20px;padding:18px;box-shadow:0 30px 80px rgba(0,0,0,.5);position:relative}
+.mock .bar{display:flex;gap:6px;margin-bottom:14px}
+.mock .dot{width:10px;height:10px;border-radius:50%;background:var(--border)}
+.mock-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+.mcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:left}
+.mcard .l{font-size:11px;color:var(--text3);margin-bottom:6px}
+.mcard .v{font-size:19px;font-weight:700}
+.mbar{height:7px;border-radius:99px;background:var(--border);margin-top:10px;overflow:hidden}
+.mbar>span{display:block;height:100%;border-radius:99px;background:var(--grad)}
+.mrow{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:12px 14px;margin-bottom:8px;font-size:14px;text-align:left}
+.mcheck{width:20px;height:20px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff}
+.mcheck.on{background:var(--grad)} .mcheck.off{border:2px solid var(--border)}
+.chip{font-size:11px;padding:2px 9px;border-radius:99px;background:rgba(124,108,245,.15);color:var(--accent2);margin-left:auto;white-space:nowrap}
+/* features */
+.features{padding:80px 0 20px}
+h2.sec{font-size:34px;font-weight:800;text-align:center;letter-spacing:-.02em}
+.sec-sub{text-align:center;color:var(--text2);margin:12px 0 44px;font-size:16px}
+.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.fcard{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:26px}
+.fcard .ico{font-size:30px}
+.fcard h3{font-size:17px;margin:14px 0 8px}
+.fcard p{font-size:14px;color:var(--text2);line-height:1.65}
+/* how */
+.how{padding:70px 0}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.step{text-align:center;padding:20px}
+.step .n{width:44px;height:44px;border-radius:50%;background:var(--grad);color:#fff;font-weight:700;font-size:18px;
+  display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.step h3{font-size:16px;margin-bottom:8px}
+.step p{font-size:14px;color:var(--text2);line-height:1.6}
+/* bottom cta */
+.bottom{padding:60px 0 90px;text-align:center}
+.bottom .box{background:var(--bg2);border:1px solid var(--border);border-radius:24px;padding:56px 30px;position:relative;overflow:hidden}
+.bottom .box::before{content:'';position:absolute;top:-120px;left:50%;transform:translateX(-50%);
+  width:600px;height:300px;background:radial-gradient(ellipse, rgba(124,108,245,.25), transparent 65%)}
+.bottom h2{font-size:32px;font-weight:800;letter-spacing:-.02em;position:relative}
+.bottom p{color:var(--text2);margin:14px 0 30px;position:relative}
+footer{border-top:1px solid var(--border);padding:26px 0;text-align:center;color:var(--text3);font-size:13px}
+@media(max-width:760px){
+  .hero h1{font-size:33px}
+  .hero p{font-size:16px}
+  .hero{padding:36px 0 20px}
+  .fgrid,.steps{grid-template-columns:1fr}
+  .mock-grid{grid-template-columns:1fr 1fr}
+  h2.sec{font-size:26px}
+  .mock{padding:12px}
+  header .btn{padding:10px 16px;font-size:13.5px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo"><div class="logo-badge">◆</div>Мой Трекер</div>
+    <a class="btn btn-ghost" href="app.html">Войти</a>
+  </header>
+
+  <section class="hero">
+    <h1>Вся жизнь под контролем —<br><span class="grad">в одном трекере</span></h1>
+    <p>Цели и команда на работе, личные проекты и бизнес, бюджет с прогнозом кэшфлоу,
+    спорт и еженедельные итоги. Всё в одном месте, с любого устройства.</p>
+    <div class="cta">
+      <a class="btn btn-primary" href="app.html#signup">Начать бесплатно →</a>
+      <a class="btn btn-ghost" href="#features">Что внутри</a>
+    </div>
+    <div class="note">Бесплатно · Регистрация за 30 секунд · Данные видны только вам</div>
+
+    <div class="mock">
+      <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+      <div class="mock-grid">
+        <div class="mcard"><div class="l">🎯 Прогресс целей</div><div class="v">67%</div><div class="mbar"><span style="width:67%"></span></div></div>
+        <div class="mcard"><div class="l">💰 Баланс месяца</div><div class="v" style="color:#34d399">+123 700 ₽</div><div class="l" style="margin-top:8px">сбережения 44%</div></div>
+        <div class="mcard"><div class="l">👥 Команда</div><div class="v">6 задач</div><div class="l" style="margin-top:8px">просрочек нет</div></div>
+        <div class="mcard"><div class="l">🏃 Спорт</div><div class="v">3 из 3</div><div class="mbar"><span style="width:100%;background:#34d399"></span></div></div>
+      </div>
+      <div class="mrow"><span class="mcheck on">✓</span> Планёрка с командой <span class="chip">🔁 ежедневно</span></div>
+      <div class="mrow"><span class="mcheck off"></span> Финальное собеседование с кандидатом <span class="chip" style="background:rgba(248,113,113,.15);color:#f87171">важно</span></div>
+      <div class="mrow"><span class="mcheck off"></span> Ревью макетов онбординга <span class="chip">📁 Редизайн сайта</span></div>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <h2 class="sec">Один инструмент вместо пяти</h2>
+    <div class="sec-sub">Всё, что обычно разбросано по заметкам, таблицам и приложениям</div>
+    <div class="fgrid">
+      <div class="fcard"><div class="ico">💼</div><h3>Работа и команда</h3>
+        <p>Годовые и квартальные цели с автопрогрессом, фокусы недели, задачи дня, инбокс. Команда: люди, проекты, канбан-доска, дедлайны и темы к 1:1.</p></div>
+      <div class="fcard"><div class="ico">🚀</div><h3>Проекты и бизнес</h3>
+        <p>Личные проекты с задачами и партнёрами, бэклог идей, который превращается в проекты одним кликом, и учёт бизнеса: цели, задачи, выручка и прибыль по месяцам.</p></div>
+      <div class="fcard"><div class="ico">💰</div><h3>Бюджет и прогноз</h3>
+        <p>План и факт по категориям с лимитами, долги со сроками погашения, копилки с целями и прогноз кэшфлоу на 12 месяцев вперёд.</p></div>
+      <div class="fcard"><div class="ico">🏃</div><h3>Спорт</h3>
+        <p>Тренировки по видам спорта, цель на неделю, серии недель без пропусков, календарь активности и спортивные цели — от «50 пробежек» до «жим 100 кг».</p></div>
+      <div class="fcard"><div class="ico">📝</div><h3>Итоги недели</h3>
+        <p>Еженедельная рефлексия за 10 минут: что получилось, что нет, план на следующую неделю. Автозаполнение из сделанного за неделю.</p></div>
+      <div class="fcard"><div class="ico">☁️</div><h3>Всегда с собой</h3>
+        <p>Один аккаунт — все устройства: компьютер, телефон, планшет. Тёмная и светлая темы, 6 цветовых схем, добавляется на экран телефона как приложение.</p></div>
+    </div>
+  </section>
+
+  <section class="how">
+    <h2 class="sec">Как начать</h2>
+    <div class="sec-sub">Три шага — и всё под контролем</div>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><h3>Зарегистрируйтесь</h3><p>Email и пароль — 30 секунд, без подтверждений и карт.</p></div>
+      <div class="step"><div class="n">2</div><h3>Заполните цели</h3><p>Начните с целей года и задач на сегодня — или посмотрите демо-данные.</p></div>
+      <div class="step"><div class="n">3</div><h3>Откройте на телефоне</h3><p>Войдите с телефона и добавьте на главный экран — данные синхронизируются сами.</p></div>
+    </div>
+  </section>
+
+  <section class="bottom">
+    <div class="box">
+      <h2>Начните вести свою жизнь системно</h2>
+      <p>Бесплатно. Понадобится только email.</p>
+      <a class="btn btn-primary" href="app.html#signup" style="position:relative">Создать аккаунт →</a>
+    </div>
+  </section>
+</div>
+<footer>◆ Мой Трекер · Работа · Проекты · Бюджет · Спорт</footer>
+</body>
+</html>

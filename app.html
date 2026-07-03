@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1117">
+<title>Мой Трекер</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo"><div class="logo-badge">◆</div>Мой Трекер</div>
+    <button class="nav-btn" data-view="dashboard"><span class="ico">▦</span>Дашборд</button>
+    <button class="nav-btn" data-view="work"><span class="ico">💼</span>Работа</button>
+    <button class="nav-btn" data-view="personal"><span class="ico">🚀</span>Личные проекты</button>
+    <button class="nav-btn" data-view="budget"><span class="ico">💰</span>Бюджет</button>
+    <button class="nav-btn" data-view="sport"><span class="ico">🏃</span>Спорт</button>
+    <button class="nav-btn" data-view="review"><span class="ico">📝</span>Итоги недели</button>
+    <div class="spacer"></div>
+    <button class="nav-btn" data-view="settings"><span class="ico">⚙︎</span>Настройки</button>
+    <button class="nav-btn" id="themeBtn"><span class="ico">☾</span>Тема</button>
+  </aside>
+  <main class="main" id="view"></main>
+</div>
+<nav class="bottomnav">
+  <button data-view="dashboard"><span class="ico">▦</span>Обзор</button>
+  <button data-view="work"><span class="ico">💼</span>Работа</button>
+  <button data-view="personal"><span class="ico">🚀</span>Проекты</button>
+  <button data-view="budget"><span class="ico">💰</span>Бюджет</button>
+  <button data-view="sport"><span class="ico">🏃</span>Спорт</button>
+  <button data-view="review"><span class="ico">📝</span>Итоги</button>
+  <button data-view="settings"><span class="ico">⚙︎</span>Ещё</button>
+</nav>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+<script src="app.js"></script>
+</body>
+</html>

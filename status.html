@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Диагностика — Мой Трекер</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f1117;color:#eef0f6;
+  display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px}
+.box{max-width:500px;width:100%;background:#1a1e2b;border:1px solid #2a3044;border-radius:18px;padding:28px}
+h1{font-size:19px;margin:0 0 6px}
+.sub{color:#9aa3b8;font-size:13px;margin-bottom:22px}
+.row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #2a3044;font-size:14px}
+.row:last-of-type{border-bottom:none}
+.st{margin-left:auto;font-weight:700;font-size:13px;white-space:nowrap}
+.ok{color:#34d399}.bad{color:#f87171}.wait{color:#9aa3b8}
+.note{font-size:12.5px;color:#9aa3b8;margin-top:18px;line-height:1.65;background:#141722;border-radius:10px;padding:12px}
+button{margin-top:16px;width:100%;padding:12px;border:none;border-radius:11px;background:linear-gradient(135deg,#6366f1,#a855f7);
+  color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>🔍 Диагностика подключения</h1>
+  <div class="sub">Откройте БЕЗ VPN и пришлите скриншот результата</div>
+  <div class="row">1. Эта страница открылась <span class="st ok">✓ да</span></div>
+  <div class="row">2. Файлы приложения <span class="st wait" id="r2">проверяю…</span></div>
+  <div class="row">3. API: прокси на этом домене <span class="st wait" id="r3">проверяю…</span></div>
+  <div class="row">4. API: прокси Netlify <span class="st wait" id="r4">проверяю…</span></div>
+  <div class="row">5. API: Supabase напрямую <span class="st wait" id="r5">проверяю…</span></div>
+  <div class="row">6. Версия приложения <span class="st wait" id="r6">проверяю…</span></div>
+  <div class="note" id="verdict">Выполняю проверки…</div>
+  <button onclick="hardReset()">🧹 Очистить кэш и открыть приложение заново</button>
+</div>
+<script>
+const KEY = 'sb_publishable_jkpMc9KlH_7RfPjAzwA1ZA_vgbLDfrx';
+const set = (id, ok, txt) => { const el = document.getElementById(id); el.textContent = txt || (ok?'✓ работает':'✕ недоступно'); el.className = 'st ' + (ok?'ok':'bad'); };
+const probe = async url => {
+  try{
+    const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 6000);
+    const r = await fetch(url, {headers:{apikey:KEY}, cache:'no-store', signal:ctl.signal});
+    clearTimeout(t);
+    return r.ok;
+  }catch(e){ return false; }
+};
+(async () => {
+  const res = {};
+  try{ const r = await fetch('app.js', {method:'HEAD', cache:'no-store'}); res.files = r.ok; }catch(e){ res.files = false; }
+  set('r2', res.files);
+  res.local = await probe('/sb/auth/v1/settings'); set('r3', res.local);
+  res.netlify = await probe('https://grand-gelato-322c2c.netlify.app/sb/auth/v1/settings'); set('r4', res.netlify);
+  res.direct = await probe('https://btoorbyqzphpqejzgwmz.supabase.co/auth/v1/settings'); set('r5', res.direct);
+  try{
+    const t = await fetch('app.js', {cache:'no-store'}).then(r=>r.text());
+    res.fresh = t.includes('API_BASES');
+    set('r6', res.fresh, res.fresh ? '✓ свежая' : '✕ старая (кэш!)');
+  }catch(e){ set('r6', false, '—'); }
+  const v = document.getElementById('verdict');
+  const anyApi = res.local || res.netlify || res.direct;
+  if(anyApi && res.fresh) v.innerHTML = '<b style="color:#34d399">Всё должно работать.</b> Приложение само выберет доступный путь ('+(res.local?'прокси':(res.netlify?'Netlify-прокси':'напрямую'))+'). Если вход всё равно не идёт — нажмите кнопку очистки кэша ниже.';
+  else if(anyApi && !res.fresh) v.innerHTML = '<b style="color:#fbbf24">В кэше устройства старая версия.</b> Нажмите кнопку ниже — она загрузит свежую.';
+  else v.innerHTML = '<b style="color:#f87171">Ваш провайдер блокирует все пути к серверу.</b> Пришлите скриншот и название оператора (МТС/Билайн/…) — подключим запасной путь.';
+})();
+async function hardReset(){
+  try{ if('caches' in window){ const ks = await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
+  try{ if(navigator.serviceWorker){ const rs = await navigator.serviceWorker.getRegistrations(); await Promise.all(rs.map(r=>r.unregister())); } }catch(e){}
+  try{ localStorage.removeItem('mytracker_apibase'); }catch(e){}
+  location.href = 'app.html?nocache=' + Date.now();
+}
+</script>
+</body>
+</html>
