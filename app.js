@@ -2303,8 +2303,7 @@ function budgetMonth(){
     </div>`;
   };
   return `
-  <div style="display:flex;justify-content:center;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-    <button class="btn btn-ghost btn-sm" onclick="openCsvImport()">⬆ Импорт CSV</button>
+  <div style="display:flex;justify-content:center;margin-bottom:16px">
     <div class="week-nav card" style="padding:8px 14px">
       <button class="icon-btn" onclick="setSub('budgetMonth','${prevM}')">‹</button>
       <b style="font-size:14.5px;min-width:130px;text-align:center;cursor:pointer" title="Выбрать месяц" onclick="pickMonth('${m}', v=>setSub('budgetMonth',v))">${fmtMonth(m)}</b>
