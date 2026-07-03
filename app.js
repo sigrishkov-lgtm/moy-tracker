@@ -351,6 +351,11 @@ function focusToggle(id){
 }
 /* --- вводный тур --- */
 function maybeTour(){
+  // существующий пользователь (есть имя или данные) — тур не показываем, даже на новом устройстве
+  if(S.settings.userName || !isEmptyState()){
+    try{ localStorage.setItem('mytracker_tour_done','1'); }catch(e){}
+    maybeAskName(); return;
+  }
   if(localStorage.getItem('mytracker_tour_done')){ maybeAskName(); return; }
   showTour(0);
 }
