@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0f1117">
+<meta name="theme-color" content="#0b0d13">
 <title>Мой Трекер — работа, проекты, бюджет и спорт в одном месте</title>
-<meta name="description" content="Личный трекер: цели и команда на работе, свои проекты и бизнес, бюджет с прогнозом кэшфлоу, спорт и итоги недели. Бесплатно.">
+<meta name="description" content="Личный трекер: цели и команда на работе, свои проекты и бизнес, бюджет с прогнозом кэшфлоу, спорт и итоги недели. Бесплатно, без карты.">
 <script>
 /* уже вошедших сразу отправляем в приложение */
 try{
@@ -16,158 +16,473 @@ try{
 </script>
 <style>
 :root{
-  --bg:#0f1117; --bg2:#141722; --surface:#1a1e2b; --border:#2a3044;
-  --text:#eef0f6; --text2:#9aa3b8; --text3:#6b7385;
-  --accent:#7c6cf5; --accent2:#a78bfa; --grad:linear-gradient(135deg,#6366f1,#a855f7);
+  --bg:#0b0d13; --bg2:#12141d; --surface:#181b26; --surface2:#1f2331;
+  --border:#272b3b; --border2:#323752;
+  --text:#f0f2f8; --text2:#9aa3b8; --text3:#67708a;
+  --accent:#7c6cf5; --accent2:#a78bfa;
+  --grad:linear-gradient(135deg,#6366f1,#a855f7);
+  --green:#34d399; --red:#f87171; --yellow:#fbbf24; --blue:#60a5fa; --pink:#f472b6;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{
   font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  font-size:16px; line-height:1.5;
 }
-a{text-decoration:none; color:inherit}
-.wrap{max-width:1080px; margin:0 auto; padding:0 22px}
-/* header */
-header{display:flex; align-items:center; justify-content:space-between; padding:22px 0}
-.logo{display:flex; align-items:center; gap:10px; font-weight:700; font-size:17px}
-.logo-badge{width:36px;height:36px;border-radius:11px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff}
+a{text-decoration:none;color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+section{padding:96px 0}
+@media(max-width:760px){section{padding:56px 0}}
+
+/* ---------- кнопки ---------- */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;
-  padding:12px 26px;border-radius:12px;font-size:15px;font-weight:600;font-family:inherit;transition:.2s}
-.btn-primary{background:var(--grad);color:#fff;box-shadow:0 8px 28px rgba(124,108,245,.35)}
-.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 34px rgba(124,108,245,.45)}
+  padding:13px 28px;border-radius:13px;font-size:15px;font-weight:600;font-family:inherit;transition:.2s;white-space:nowrap}
+.btn-primary{background:var(--grad);color:#fff;box-shadow:0 10px 30px rgba(124,108,245,.35)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 14px 38px rgba(124,108,245,.5)}
 .btn-ghost{background:var(--surface);color:var(--text2);border:1px solid var(--border)}
-.btn-ghost:hover{color:var(--text)}
-/* hero */
-.hero{text-align:center; padding:64px 0 40px; position:relative}
-.hero::before{content:'';position:absolute;top:-160px;left:50%;transform:translateX(-50%);
-  width:820px;height:520px;background:radial-gradient(ellipse, rgba(124,108,245,.22), transparent 65%);pointer-events:none}
-.hero h1{font-size:52px;font-weight:800;letter-spacing:-.03em;line-height:1.12;position:relative}
-.hero h1 .grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
-.hero p{font-size:19px;color:var(--text2);max-width:640px;margin:22px auto 0;line-height:1.6;position:relative}
-.cta{display:flex;gap:14px;justify-content:center;margin-top:34px;flex-wrap:wrap;position:relative}
-.hero .note{font-size:13px;color:var(--text3);margin-top:16px;position:relative}
-/* mockup */
-.mock{margin:56px auto 0;max-width:860px;background:var(--bg2);border:1px solid var(--border);
-  border-radius:20px;padding:18px;box-shadow:0 30px 80px rgba(0,0,0,.5);position:relative}
-.mock .bar{display:flex;gap:6px;margin-bottom:14px}
-.mock .dot{width:10px;height:10px;border-radius:50%;background:var(--border)}
-.mock-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
-.mcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:left}
-.mcard .l{font-size:11px;color:var(--text3);margin-bottom:6px}
-.mcard .v{font-size:19px;font-weight:700}
-.mbar{height:7px;border-radius:99px;background:var(--border);margin-top:10px;overflow:hidden}
-.mbar>span{display:block;height:100%;border-radius:99px;background:var(--grad)}
-.mrow{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);
-  border-radius:12px;padding:12px 14px;margin-bottom:8px;font-size:14px;text-align:left}
-.mcheck{width:20px;height:20px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff}
-.mcheck.on{background:var(--grad)} .mcheck.off{border:2px solid var(--border)}
-.chip{font-size:11px;padding:2px 9px;border-radius:99px;background:rgba(124,108,245,.15);color:var(--accent2);margin-left:auto;white-space:nowrap}
-/* features */
-.features{padding:80px 0 20px}
-h2.sec{font-size:34px;font-weight:800;text-align:center;letter-spacing:-.02em}
-.sec-sub{text-align:center;color:var(--text2);margin:12px 0 44px;font-size:16px}
-.fgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.fcard{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:26px}
-.fcard .ico{font-size:30px}
-.fcard h3{font-size:17px;margin:14px 0 8px}
-.fcard p{font-size:14px;color:var(--text2);line-height:1.65}
-/* how */
-.how{padding:70px 0}
-.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.step{text-align:center;padding:20px}
-.step .n{width:44px;height:44px;border-radius:50%;background:var(--grad);color:#fff;font-weight:700;font-size:18px;
-  display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
-.step h3{font-size:16px;margin-bottom:8px}
-.step p{font-size:14px;color:var(--text2);line-height:1.6}
-/* bottom cta */
-.bottom{padding:60px 0 90px;text-align:center}
-.bottom .box{background:var(--bg2);border:1px solid var(--border);border-radius:24px;padding:56px 30px;position:relative;overflow:hidden}
-.bottom .box::before{content:'';position:absolute;top:-120px;left:50%;transform:translateX(-50%);
-  width:600px;height:300px;background:radial-gradient(ellipse, rgba(124,108,245,.25), transparent 65%)}
-.bottom h2{font-size:32px;font-weight:800;letter-spacing:-.02em;position:relative}
-.bottom p{color:var(--text2);margin:14px 0 30px;position:relative}
-footer{border-top:1px solid var(--border);padding:26px 0;text-align:center;color:var(--text3);font-size:13px}
-@media(max-width:760px){
-  .hero h1{font-size:33px}
-  .hero p{font-size:16px}
-  .hero{padding:36px 0 20px}
-  .fgrid,.steps{grid-template-columns:1fr}
-  .mock-grid{grid-template-columns:1fr 1fr}
-  h2.sec{font-size:26px}
-  .mock{padding:12px}
-  header .btn{padding:10px 16px;font-size:13.5px}
+.btn-ghost:hover{color:var(--text);border-color:var(--border2)}
+.btn-sm{padding:9px 18px;font-size:14px;border-radius:10px}
+
+/* ---------- header ---------- */
+header{
+  position:sticky;top:0;z-index:50;
+  background:rgba(11,13,19,.75);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(39,43,59,.6);
 }
+.nav{display:flex;align-items:center;gap:28px;padding:14px 0}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16.5px;margin-right:auto}
+.logo-badge{width:34px;height:34px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:16px;color:#fff}
+.nav-links{display:flex;gap:26px;font-size:14px;color:var(--text2)}
+.nav-links a:hover{color:var(--text)}
+@media(max-width:760px){.nav-links{display:none}.nav{gap:10px}}
+
+/* ---------- hero ---------- */
+.hero{position:relative;text-align:center;padding:88px 0 64px}
+.hero::before{content:'';position:absolute;top:-220px;left:50%;transform:translateX(-50%);
+  width:900px;height:600px;background:radial-gradient(ellipse,rgba(124,108,245,.22),transparent 62%);pointer-events:none}
+.badge{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--accent2);
+  background:rgba(124,108,245,.12);border:1px solid rgba(124,108,245,.3);padding:6px 14px;border-radius:99px;position:relative}
+.hero h1{font-size:58px;font-weight:800;letter-spacing:-.03em;line-height:1.08;margin:26px 0 0;position:relative}
+.hero h1 .grad{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .lead{font-size:19px;color:var(--text2);max-width:620px;margin:24px auto 0;line-height:1.65;position:relative}
+.cta{display:flex;gap:14px;justify-content:center;margin-top:36px;flex-wrap:wrap;position:relative}
+.hero .trust{display:flex;gap:22px;justify-content:center;margin-top:22px;font-size:13px;color:var(--text3);flex-wrap:wrap;position:relative}
+.hero .trust span{display:flex;align-items:center;gap:6px}
+@media(max-width:760px){.hero{padding:48px 0 40px}.hero h1{font-size:34px}.hero .lead{font-size:16px}}
+
+/* ---------- окно-мокап ---------- */
+.window{background:var(--bg2);border:1px solid var(--border);border-radius:20px;overflow:hidden;
+  box-shadow:0 40px 100px rgba(0,0,0,.55), 0 0 0 1px rgba(124,108,245,.06)}
+.window .bar{display:flex;gap:6px;padding:13px 16px;border-bottom:1px solid var(--border);background:var(--surface)}
+.window .dot{width:10px;height:10px;border-radius:50%;background:var(--border2)}
+.hero .window{max-width:940px;margin:58px auto 0;position:relative}
+.hero .window .inner{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:18px}
+.mcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:left}
+.mcard .l{font-size:11px;color:var(--text3);margin-bottom:7px}
+.mcard .v{font-size:20px;font-weight:700}
+.mbar{height:7px;border-radius:99px;background:var(--surface2);margin-top:11px;overflow:hidden}
+.mbar>span{display:block;height:100%;border-radius:99px;background:var(--grad)}
+.hero .rows{padding:0 18px 18px;display:grid;gap:8px}
+.mrow{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:12px 15px;font-size:14px;text-align:left}
+.mcheck{width:21px;height:21px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff}
+.mcheck.on{background:var(--grad)} .mcheck.off{border:2px solid var(--border2)}
+.chip{font-size:11px;padding:3px 10px;border-radius:99px;background:rgba(124,108,245,.14);color:var(--accent2);margin-left:auto;white-space:nowrap;font-weight:600}
+@media(max-width:760px){.hero .window .inner{grid-template-columns:1fr 1fr}}
+
+/* ---------- заменяет приложения ---------- */
+.replace{border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg2);padding:34px 0}
+.replace .row{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;font-size:14px;color:var(--text3)}
+.replace .app{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);
+  border-radius:11px;padding:8px 15px;color:var(--text2);font-weight:500;text-decoration:line-through;text-decoration-color:rgba(248,113,113,.7);text-decoration-thickness:2px}
+.replace .arrow{font-size:19px;color:var(--accent2);font-weight:700}
+.replace .one{display:flex;align-items:center;gap:8px;background:var(--grad);border-radius:11px;padding:9px 17px;color:#fff;font-weight:700}
+
+/* ---------- заголовки секций ---------- */
+.k{font-size:12.5px;font-weight:700;letter-spacing:.14em;color:var(--accent2);text-transform:uppercase;margin-bottom:14px}
+h2.sec{font-size:40px;font-weight:800;letter-spacing:-.025em;line-height:1.15}
+.sec-sub{color:var(--text2);margin-top:14px;font-size:17px;max-width:560px;line-height:1.6}
+.center{text-align:center}
+.center .sec-sub{margin-left:auto;margin-right:auto}
+@media(max-width:760px){h2.sec{font-size:27px}.sec-sub{font-size:15px}}
+
+/* ---------- фичи-развороты ---------- */
+.feature{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;padding:52px 0}
+.feature.rtl .txt{order:2}
+.feature .txt .k{margin-bottom:10px}
+.feature h3{font-size:27px;font-weight:750;letter-spacing:-.02em;margin-bottom:14px}
+.feature p{color:var(--text2);font-size:15.5px;line-height:1.7}
+.feature ul{list-style:none;margin-top:18px;display:grid;gap:11px}
+.feature li{display:flex;gap:11px;font-size:14.5px;color:var(--text2);line-height:1.55}
+.feature li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0}
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:20px;
+  box-shadow:0 24px 70px rgba(0,0,0,.4)}
+@media(max-width:860px){.feature{grid-template-columns:1fr;gap:28px;padding:36px 0}.feature.rtl .txt{order:0}}
+
+/* мини-виджеты в панелях */
+.prow{display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--border);font-size:13.5px}
+.prow:last-child{border-bottom:none}
+.pav{width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#fff;flex-shrink:0}
+.pbar{height:7px;border-radius:99px;background:var(--surface2);overflow:hidden;flex:1}
+.pbar>span{display:block;height:100%;border-radius:99px}
+.ptag{font-size:10.5px;padding:2px 8px;border-radius:99px;font-weight:600}
+.pie{width:150px;height:150px;border-radius:50%;flex-shrink:0;position:relative;
+  background:conic-gradient(#8b5cf6 0 32%, #f472b6 32% 52%, #60a5fa 52% 68%, #34d399 68% 82%, #fbbf24 82% 92%, #67708a 92% 100%)}
+.pie::after{content:'';position:absolute;inset:26%;background:var(--bg2);border-radius:50%}
+.heat{display:grid;grid-template-columns:repeat(14,1fr);gap:4px}
+.heat span{aspect-ratio:1;border-radius:4px;background:var(--surface2)}
+.heat .h1{background:rgba(52,211,153,.28)} .heat .h2{background:rgba(52,211,153,.55)} .heat .h3{background:rgba(52,211,153,.9)}
+.kan{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+.kan .col{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:9px}
+.kan .colh{font-size:10px;font-weight:700;color:var(--text3);margin-bottom:8px;letter-spacing:.06em}
+.kan .card{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:8px 9px;font-size:11.5px;margin-bottom:7px;line-height:1.4}
+
+/* ---------- сетка мелких фич ---------- */
+.grid6{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:52px}
+.gcard{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:22px;transition:.25s}
+.gcard:hover{border-color:var(--border2);transform:translateY(-3px)}
+.gcard .ico{font-size:24px}
+.gcard h4{font-size:15.5px;margin:12px 0 7px;font-weight:650}
+.gcard p{font-size:13.5px;color:var(--text2);line-height:1.6}
+@media(max-width:860px){.grid6{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.grid6{grid-template-columns:1fr}}
+
+/* ---------- шаги ---------- */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:52px}
+.step{background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:30px 26px;position:relative}
+.step .n{width:40px;height:40px;border-radius:12px;background:var(--grad);color:#fff;font-weight:700;font-size:17px;
+  display:flex;align-items:center;justify-content:center;margin-bottom:18px}
+.step h3{font-size:17px;margin-bottom:9px}
+.step p{font-size:14px;color:var(--text2);line-height:1.65}
+@media(max-width:760px){.steps{grid-template-columns:1fr}}
+
+/* ---------- FAQ ---------- */
+.faq{max-width:760px;margin:52px auto 0}
+.faq details{background:var(--bg2);border:1px solid var(--border);border-radius:14px;margin-bottom:12px;overflow:hidden}
+.faq summary{cursor:pointer;padding:19px 22px;font-weight:600;font-size:15.5px;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:14px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:'+';color:var(--accent2);font-size:21px;font-weight:400;transition:.2s;flex-shrink:0}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq .a{padding:0 22px 19px;color:var(--text2);font-size:14.5px;line-height:1.7}
+
+/* ---------- финальный CTA ---------- */
+.bottom .box{background:var(--bg2);border:1px solid var(--border);border-radius:26px;padding:70px 32px;text-align:center;position:relative;overflow:hidden}
+.bottom .box::before{content:'';position:absolute;top:-140px;left:50%;transform:translateX(-50%);
+  width:640px;height:340px;background:radial-gradient(ellipse,rgba(124,108,245,.28),transparent 62%)}
+.bottom h2{font-size:36px;font-weight:800;letter-spacing:-.025em;position:relative}
+.bottom p{color:var(--text2);margin:16px 0 32px;position:relative;font-size:16px}
+@media(max-width:760px){.bottom h2{font-size:25px}.bottom .box{padding:48px 22px}}
+
+footer{border-top:1px solid var(--border);padding:30px 0 40px}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;color:var(--text3);font-size:13px}
+.foot .links{display:flex;gap:20px}
+.foot a:hover{color:var(--text)}
+
+/* ---------- reveal-анимации ---------- */
+.rev{opacity:0;transform:translateY(22px);transition:opacity .6s ease, transform .6s ease}
+.rev.in{opacity:1;transform:none}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
+
+<header>
+  <div class="wrap nav">
     <div class="logo"><div class="logo-badge">◆</div>Мой Трекер</div>
-    <a class="btn btn-ghost" href="app.html">Войти</a>
-  </header>
+    <nav class="nav-links">
+      <a href="#features">Возможности</a>
+      <a href="#extra">Что внутри</a>
+      <a href="#how">Как начать</a>
+      <a href="#faq">Вопросы</a>
+    </nav>
+    <a class="btn btn-ghost btn-sm" href="app.html">Войти</a>
+    <a class="btn btn-primary btn-sm" href="app.html#signup">Начать бесплатно</a>
+  </div>
+</header>
 
-  <section class="hero">
+<section class="hero">
+  <div class="wrap">
+    <span class="badge">✦ Бесплатно · Без карты · Регистрация за 30 секунд</span>
     <h1>Вся жизнь под контролем —<br><span class="grad">в одном трекере</span></h1>
-    <p>Цели и команда на работе, личные проекты и бизнес, бюджет с прогнозом кэшфлоу,
-    спорт и еженедельные итоги. Всё в одном месте, с любого устройства.</p>
+    <p class="lead">Цели и команда на работе, личные проекты и бизнес, бюджет с прогнозом
+    кэшфлоу, спорт и итоги недели. Один аккаунт — все устройства.</p>
     <div class="cta">
-      <a class="btn btn-primary" href="app.html#signup">Начать бесплатно →</a>
-      <a class="btn btn-ghost" href="#features">Что внутри</a>
+      <a class="btn btn-primary" href="app.html#signup">Создать аккаунт →</a>
+      <a class="btn btn-ghost" href="#features">Посмотреть возможности</a>
     </div>
-    <div class="note">Бесплатно · Регистрация за 30 секунд · Данные видны только вам</div>
+    <div class="trust">
+      <span>🔒 Данные видны только вам</span>
+      <span>📱 Работает на телефоне и офлайн</span>
+      <span>🇷🇺 Доступен без VPN</span>
+    </div>
 
-    <div class="mock">
+    <div class="window rev">
       <div class="bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-      <div class="mock-grid">
-        <div class="mcard"><div class="l">🎯 Прогресс целей</div><div class="v">67%</div><div class="mbar"><span style="width:67%"></span></div></div>
-        <div class="mcard"><div class="l">💰 Баланс месяца</div><div class="v" style="color:#34d399">+123 700 ₽</div><div class="l" style="margin-top:8px">сбережения 44%</div></div>
-        <div class="mcard"><div class="l">👥 Команда</div><div class="v">6 задач</div><div class="l" style="margin-top:8px">просрочек нет</div></div>
-        <div class="mcard"><div class="l">🏃 Спорт</div><div class="v">3 из 3</div><div class="mbar"><span style="width:100%;background:#34d399"></span></div></div>
+      <div class="inner">
+        <div class="mcard"><div class="l">🎯 Прогресс целей года</div><div class="v">67%</div><div class="mbar"><span style="width:67%"></span></div></div>
+        <div class="mcard"><div class="l">💰 Баланс месяца</div><div class="v" style="color:var(--green)">+123 700 ₽</div><div class="l" style="margin-top:9px">норма сбережений 44%</div></div>
+        <div class="mcard"><div class="l">👥 Команда</div><div class="v">6 задач</div><div class="l" style="margin-top:9px">просрочек нет</div></div>
+        <div class="mcard"><div class="l">🏃 Спорт · неделя</div><div class="v">3 из 3</div><div class="mbar"><span style="width:100%;background:var(--green)"></span></div></div>
       </div>
-      <div class="mrow"><span class="mcheck on">✓</span> Планёрка с командой <span class="chip">🔁 ежедневно</span></div>
-      <div class="mrow"><span class="mcheck off"></span> Финальное собеседование с кандидатом <span class="chip" style="background:rgba(248,113,113,.15);color:#f87171">важно</span></div>
-      <div class="mrow"><span class="mcheck off"></span> Ревью макетов онбординга <span class="chip">📁 Редизайн сайта</span></div>
+      <div class="rows">
+        <div class="mrow"><span class="mcheck on">✓</span> Планёрка с командой <span class="chip">🔁 ежедневно</span></div>
+        <div class="mrow"><span class="mcheck off"></span> Финальное собеседование с кандидатом <span class="chip" style="background:rgba(248,113,113,.14);color:var(--red)">важно</span></div>
+        <div class="mrow"><span class="mcheck off"></span> Ревью макетов онбординга <span class="chip">📁 Редизайн сайта</span></div>
+      </div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section class="features" id="features">
-    <h2 class="sec">Один инструмент вместо пяти</h2>
-    <div class="sec-sub">Пять разделов — работа, проекты, бюджет, спорт и итоги недели.<br>И всё это синхронизируется между вашими устройствами.</div>
-    <div class="fgrid">
-      <div class="fcard"><div class="ico">💼</div><h3>Работа и команда</h3>
-        <p>Годовые и квартальные цели с автопрогрессом, фокусы недели, задачи дня, инбокс. Команда: люди, проекты, канбан-доска, дедлайны и темы к 1:1.</p></div>
-      <div class="fcard"><div class="ico">🚀</div><h3>Проекты и бизнес</h3>
-        <p>Личные проекты с задачами и партнёрами, бэклог идей, который превращается в проекты одним кликом, и учёт бизнеса: цели, задачи, выручка и прибыль по месяцам.</p></div>
-      <div class="fcard"><div class="ico">💰</div><h3>Бюджет и прогноз</h3>
-        <p>План и факт по категориям с лимитами, долги со сроками погашения, копилки с целями и прогноз кэшфлоу на 12 месяцев вперёд.</p></div>
-      <div class="fcard"><div class="ico">🏃</div><h3>Спорт</h3>
-        <p>Тренировки по видам спорта, цель на неделю, серии недель без пропусков, календарь активности и спортивные цели — от «50 пробежек» до «жим 100 кг».</p></div>
-      <div class="fcard"><div class="ico">📝</div><h3>Итоги недели</h3>
-        <p>Еженедельная рефлексия за 10 минут: что получилось, что нет, план на следующую неделю. Автозаполнение из сделанного за неделю.</p></div>
-      <div class="fcard"><div class="ico">☁️</div><h3>Всегда с собой</h3>
-        <p>Один аккаунт — все устройства: компьютер, телефон, планшет. Тёмная и светлая темы, 6 цветовых схем, добавляется на экран телефона как приложение.</p></div>
+<div class="replace">
+  <div class="wrap row">
+    <span class="app">📝 Заметки</span>
+    <span class="app">📊 Таблицы</span>
+    <span class="app">✅ Таск-трекер</span>
+    <span class="app">🏦 Учёт бюджета</span>
+    <span class="app">💪 Фитнес-дневник</span>
+    <span class="arrow">→</span>
+    <span class="one">◆ Мой Трекер</span>
+  </div>
+</div>
+
+<section id="features" style="padding-bottom:20px">
+  <div class="wrap">
+    <div class="center rev">
+      <div class="k">Возможности</div>
+      <h2 class="sec">Пять разделов, которые закрывают всё</h2>
+      <div class="sec-sub">Каждый раздел — полноценный инструмент. Вместе — единая система, где работа, деньги и здоровье связаны в одну картину.</div>
     </div>
-  </section>
 
-  <section class="how">
-    <h2 class="sec">Как начать</h2>
-    <div class="sec-sub">Три шага — и всё под контролем</div>
-    <div class="steps">
-      <div class="step"><div class="n">1</div><h3>Зарегистрируйтесь</h3><p>Email и пароль — 30 секунд, без подтверждений и карт.</p></div>
-      <div class="step"><div class="n">2</div><h3>Заполните цели</h3><p>Начните с целей года и задач на сегодня — или посмотрите демо-данные.</p></div>
-      <div class="step"><div class="n">3</div><h3>Откройте на телефоне</h3><p>Войдите с телефона и добавьте на главный экран — данные синхронизируются сами.</p></div>
+    <!-- 1. Работа -->
+    <div class="feature rev">
+      <div class="txt">
+        <div class="k">💼 Работа</div>
+        <h3>Цели, команда и порядок в задачах</h3>
+        <p>Система «сверху вниз»: годовые цели разбиваются на квартальные, прогресс года считается автоматически. Каждую неделю — 1–3 фокуса, каждый день — короткий список задач.</p>
+        <ul>
+          <li>Команда: люди, их задачи, дедлайны, загрузка и темы к 1:1</li>
+          <li>Канбан-доска с перетаскиванием и рабочие проекты с участниками</li>
+          <li>Инбокс для быстрых мыслей, повторяющиеся задачи, теги, режим «Фокус дня»</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <div class="kan">
+          <div class="col"><div class="colh">К РАБОТЕ</div>
+            <div class="card">Отчёт по воронке<br><span class="ptag" style="background:rgba(96,165,250,.15);color:var(--blue)">Иван</span></div>
+            <div class="card">Медиаплан август</div></div>
+          <div class="col"><div class="colh">В РАБОТЕ</div>
+            <div class="card">UI-кит приложения<br><span class="ptag" style="background:rgba(167,139,250,.15);color:var(--accent2)">📁 Запуск</span></div>
+            <div class="card">Тексты лендинга</div></div>
+          <div class="col"><div class="colh">ГОТОВО</div>
+            <div class="card" style="opacity:.55">Аудит сайта ✓</div>
+            <div class="card" style="opacity:.55">Исследование ✓</div></div>
+        </div>
+        <div class="prow" style="margin-top:12px;border-top:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--text3)">🎯 Выстроить процессы</span>
+          <div class="pbar"><span style="width:67%;background:var(--grad)"></span></div>
+          <b style="font-size:12px">67%</b>
+        </div>
+      </div>
     </div>
-  </section>
 
-  <section class="bottom">
-    <div class="box">
+    <!-- 2. Проекты и бизнес -->
+    <div class="feature rtl rev">
+      <div class="txt">
+        <div class="k">🚀 Проекты и бизнес</div>
+        <h3>От идеи до бизнеса с цифрами</h3>
+        <p>Бэклог идей, который превращается в проекты одним кликом. Партнёры и ответственные по задачам. А по каждому бизнесу — цели, задачи и деньги по месяцам.</p>
+        <ul>
+          <li>Личные проекты с задачами, дедлайнами и прогрессом</li>
+          <li>Выручка, расходы и прибыль бизнеса — график по месяцам</li>
+          <li>Шаблоны проектов: типовая структура разворачивается в один клик</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <b style="font-size:15px">🏢 Кофейня «Утро»</b>
+          <span class="ptag" style="background:rgba(52,211,153,.14);color:var(--green)">🟢 активный</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0">
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px">
+            <div style="font-size:11px;color:var(--text3)">Июнь</div>
+            <div style="font-size:17px;font-weight:700;color:var(--green)">+147 000 ₽</div>
+          </div>
+          <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px">
+            <div style="font-size:11px;color:var(--text3)">Прибыль за год</div>
+            <div style="font-size:17px;font-weight:700;color:var(--green)">+512 000 ₽</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:6px;height:74px;padding:0 4px">
+          <span style="flex:1;height:34%;background:rgba(52,211,153,.75);border-radius:4px 4px 0 0"></span>
+          <span style="flex:1;height:46%;background:rgba(52,211,153,.75);border-radius:4px 4px 0 0"></span>
+          <span style="flex:1;height:58%;background:rgba(52,211,153,.75);border-radius:4px 4px 0 0"></span>
+          <span style="flex:1;height:70%;background:rgba(52,211,153,.75);border-radius:4px 4px 0 0"></span>
+          <span style="flex:1;height:86%;background:rgba(52,211,153,.75);border-radius:4px 4px 0 0"></span>
+          <span style="flex:1;height:100%;background:var(--green);border-radius:4px 4px 0 0"></span>
+        </div>
+        <div class="prow"><span class="pav" style="background:#ec4899">ДС</span> Договориться с поставщиком зерна <span class="ptag" style="background:rgba(251,191,36,.14);color:var(--yellow);margin-left:auto">⏱ 7 июл</span></div>
+      </div>
+    </div>
+
+    <!-- 3. Бюджет -->
+    <div class="feature rev">
+      <div class="txt">
+        <div class="k">💰 Бюджет</div>
+        <h3>Деньги под контролем — и на год вперёд</h3>
+        <p>План и факт по категориям с лимитами и процентами. Долги со сроками погашения, копилки с целями. Прогноз кэшфлоу на 12 месяцев показывает, каким будет капитал.</p>
+        <ul>
+          <li>«Оплачено» одним кликом — план превращается в факт</li>
+          <li>Долги: «закроется к марту 2028», копилки: «нужно 40 000 ₽/мес»</li>
+          <li>Разовые операции — отпуск и премия учитываются в прогнозе</li>
+        </ul>
+      </div>
+      <div class="panel" style="display:flex;gap:22px;align-items:center">
+        <div class="pie"></div>
+        <div style="flex:1">
+          <div class="prow"><span style="color:var(--accent2)">●</span> Жильё <span style="margin-left:auto;font-size:12px;color:var(--text3)">32%</span><b style="font-size:12.5px">75 000 ₽</b></div>
+          <div class="prow"><span style="color:var(--pink)">●</span> Продукты <span style="margin-left:auto;font-size:12px;color:var(--text3)">20%</span><b style="font-size:12.5px">46 400 ₽</b></div>
+          <div class="prow"><span style="color:var(--blue)">●</span> Долги <span style="margin-left:auto;font-size:12px;color:var(--text3)">16%</span><b style="font-size:12.5px">52 000 ₽</b></div>
+          <div class="prow"><span style="color:var(--green)">●</span> Кафе <span style="margin-left:auto;font-size:12px;color:var(--text3)">14%</span><b style="font-size:12.5px">18 300 ₽</b></div>
+          <div class="prow"><span style="color:var(--yellow)">●</span> Транспорт <span style="margin-left:auto;font-size:12px;color:var(--text3)">10%</span><b style="font-size:12.5px">9 100 ₽</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Спорт -->
+    <div class="feature rtl rev">
+      <div class="txt">
+        <div class="k">🏃 Спорт</div>
+        <h3>Форма — такая же цель, как и все</h3>
+        <p>Записывайте тренировки по видам спорта, держите цель на неделю и не прерывайте серию. Календарь активности подсвечивает дни, когда вы тренировались.</p>
+        <ul>
+          <li>Цель недели и серия недель без пропусков</li>
+          <li>Спортивные цели: «50 пробежек за год» считаются сами из тренировок</li>
+          <li>График нагрузки по неделям и дистанции</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <b style="font-size:14px">Календарь активности</b>
+          <span class="ptag" style="background:rgba(52,211,153,.14);color:var(--green)">🔥 серия: 5 недель</span>
+        </div>
+        <div class="heat">
+          <span></span><span class="h1"></span><span></span><span class="h2"></span><span></span><span class="h1"></span><span class="h3"></span><span></span><span class="h2"></span><span></span><span class="h1"></span><span></span><span class="h3"></span><span class="h1"></span>
+          <span class="h2"></span><span></span><span class="h1"></span><span></span><span class="h3"></span><span></span><span class="h1"></span><span class="h2"></span><span></span><span class="h1"></span><span class="h3"></span><span></span><span class="h2"></span><span></span>
+          <span></span><span class="h3"></span><span></span><span class="h1"></span><span class="h2"></span><span></span><span class="h1"></span><span></span><span class="h3"></span><span class="h1"></span><span></span><span class="h2"></span><span class="h1"></span><span class="h3"></span>
+        </div>
+        <div class="prow" style="margin-top:12px"><span>🏃 50 пробежек за год</span><div class="pbar"><span style="width:64%;background:var(--green)"></span></div><b style="font-size:12px">32/50</b></div>
+        <div class="prow"><span>🏋️ Жим лёжа 100 кг</span><div class="pbar"><span style="width:85%;background:var(--green)"></span></div><b style="font-size:12px">85 кг</b></div>
+      </div>
+    </div>
+
+    <!-- 5. Итоги недели -->
+    <div class="feature rev">
+      <div class="txt">
+        <div class="k">📝 Итоги недели</div>
+        <h3>10 минут в неделю, чтобы расти системно</h3>
+        <p>Каждую неделю — короткая рефлексия: что получилось, что нет, план на следующую. Приложение само подставит сделанное за неделю — останется добавить выводы.</p>
+        <ul>
+          <li>Автозаполнение из выполненных задач и фокусов</li>
+          <li>Оценка недели — видно динамику от 😞 до 🔥</li>
+          <li>История всех недель — ваш личный журнал прогресса</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <span style="font-size:24px">🔥</span><b style="font-size:14px">Неделя 29 июн – 5 июл</b>
+        </div>
+        <div style="display:grid;gap:12px">
+          <div><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:5px">✅ ПОЛУЧИЛОСЬ</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.6">Закрыли найм аналитика · Провёл стратсессию · 3 пробежки</div></div>
+          <div><div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:5px">✕ НЕ ПОЛУЧИЛОСЬ</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.6">Отчёт по воронке перенёсся — недооценил объём</div></div>
+          <div><div style="font-size:11px;font-weight:700;color:var(--blue);margin-bottom:5px">→ ПЛАН НА СЛЕДУЮЩУЮ</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.6">Демо-день приложения · Согласовать бюджет Q4</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="extra" style="padding-top:40px">
+  <div class="wrap">
+    <div class="center rev">
+      <div class="k">И это ещё не всё</div>
+      <h2 class="sec">Мелочи, которые решают</h2>
+    </div>
+    <div class="grid6 rev">
+      <div class="gcard"><div class="ico">☁️</div><h4>Синхронизация</h4><p>Один аккаунт — компьютер, телефон, планшет. Правки с двух устройств аккуратно объединяются.</p></div>
+      <div class="gcard"><div class="ico">✈️</div><h4>Офлайн-режим</h4><p>Работает без интернета — в метро и в самолёте. Синхронизируется, когда сеть вернётся.</p></div>
+      <div class="gcard"><div class="ico">🎨</div><h4>Темы оформления</h4><p>Тёмный и светлый режимы, шесть цветовых схем — от строгого графита до маргариты.</p></div>
+      <div class="gcard"><div class="ico">📱</div><h4>Как приложение</h4><p>Добавляется на главный экран телефона и открывается без браузерной адресной строки.</p></div>
+      <div class="gcard"><div class="ico">🎯</div><h4>Фокус дня</h4><p>Полноэкранный режим с тремя главными задачами — когда нужно просто делать, а не листать.</p></div>
+      <div class="gcard"><div class="ico">🔒</div><h4>Приватность</h4><p>Данные изолированы по аккаунтам и видны только вам. Экспорт в файл — в один клик.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="how" style="padding-top:40px">
+  <div class="wrap">
+    <div class="center rev">
+      <div class="k">Старт</div>
+      <h2 class="sec">Три шага — и всё под контролем</h2>
+    </div>
+    <div class="steps rev">
+      <div class="step"><div class="n">1</div><h3>Создайте аккаунт</h3><p>Email и пароль — 30 секунд. Без подтверждений, карт и продаж. Можно начать с демо-данными, чтобы всё посмотреть.</p></div>
+      <div class="step"><div class="n">2</div><h3>Поставьте цели</h3><p>Начните с целей года и задач на сегодня. Вводный тур подскажет, как устроена система «год → квартал → неделя → день».</p></div>
+      <div class="step"><div class="n">3</div><h3>Откройте на телефоне</h3><p>Войдите с телефона и добавьте на главный экран. Данные синхронизируются сами — трекер всегда с собой.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" style="padding-top:40px">
+  <div class="wrap">
+    <div class="center rev">
+      <div class="k">FAQ</div>
+      <h2 class="sec">Частые вопросы</h2>
+    </div>
+    <div class="faq rev">
+      <details><summary>Это действительно бесплатно?</summary><div class="a">Да, полностью. Регистрация по email, банковская карта не нужна, скрытых ограничений нет.</div></details>
+      <details><summary>Кто видит мои данные?</summary><div class="a">Только вы. Данные каждого аккаунта изолированы на уровне базы, доступ — по вашему паролю. «Команда» в трекере — это ваш личный список людей и их задач: коллеги не получают доступ к приложению и не видят ничего.</div></details>
+      <details><summary>Работает ли на телефоне?</summary><div class="a">Да. Интерфейс адаптирован под телефон, а сайт добавляется на главный экран как обычное приложение (Safari/Chrome → «Поделиться» → «На экран “Домой”»). Есть офлайн-режим.</div></details>
+      <details><summary>Открывается ли в России без VPN?</summary><div class="a">Да. Есть основной сайт и зеркало, а приложение автоматически выбирает доступный у вашего провайдера путь к серверу. Если что-то не открывается — на странице диагностики видно, в чём дело.</div></details>
+      <details><summary>Что будет, если я забуду пароль?</summary><div class="a">На экране входа есть «Забыли пароль?» — пришлём письмо со ссылкой для восстановления, зададите новый пароль и продолжите с теми же данными.</div></details>
+      <details><summary>Могу ли я забрать свои данные?</summary><div class="a">Да, в настройках есть экспорт всех данных в файл одним кликом — и импорт обратно. Плюс автоматические локальные копии за последние 7 дней.</div></details>
+    </div>
+  </div>
+</section>
+
+<section class="bottom" style="padding-top:20px">
+  <div class="wrap">
+    <div class="box rev">
       <h2>Начните вести свою жизнь системно</h2>
-      <p>Бесплатно. Понадобится только email.</p>
+      <p>Бесплатно. Понадобится только email — и 30 секунд.</p>
       <a class="btn btn-primary" href="app.html#signup" style="position:relative">Создать аккаунт →</a>
     </div>
-  </section>
-</div>
-<footer>◆ Мой Трекер · Работа · Проекты · Бюджет · Спорт</footer>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <div class="logo" style="font-size:14px"><div class="logo-badge" style="width:26px;height:26px;font-size:12px;border-radius:8px">◆</div>Мой Трекер</div>
+    <div class="links">
+      <a href="app.html">Приложение</a>
+      <a href="status.html">Диагностика</a>
+      <a href="#faq">Вопросы</a>
+    </div>
+    <div>Работа · Проекты · Бюджет · Спорт</div>
+  </div>
+</footer>
+
+<script>
+/* появление блоков при скролле */
+(function(){
+  if(!('IntersectionObserver' in window)){ document.querySelectorAll('.rev').forEach(e=>e.classList.add('in')); return; }
+  const io = new IntersectionObserver(es=>{
+    es.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, {threshold:.12});
+  document.querySelectorAll('.rev').forEach(e=>io.observe(e));
+})();
+</script>
 </body>
 </html>
