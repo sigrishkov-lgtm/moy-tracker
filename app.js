@@ -820,7 +820,9 @@ function greeting(){
 let nameAsked = false;
 function maybeAskName(){
   if(S.settings.userName || nameAsked) return;
+  try{ if(localStorage.getItem('mytracker_name_asked')) return; }catch(e){}
   nameAsked = true;
+  try{ localStorage.setItem('mytracker_name_asked','1'); }catch(e){}
   setTimeout(()=>{
     if(document.getElementById('modalForm')) return; // не перебиваем другую форму
     openModal('Как вас зовут? 👋', `
@@ -4331,6 +4333,10 @@ function mergeStates(base, local, remote){
     let v; if(lj===rj) v = lv; else if(bj===rj) v = lv; else if(bj===lj) v = rv; else v = localNewer ? lv : rv;
     setPath(out, p, JSON.parse(JSON.stringify(v)));
   });
+  // имя пользователя не теряем ни при каком исходе слияния
+  if(!out.settings.userName){
+    out.settings.userName = (local.settings&&local.settings.userName) || (remote.settings&&remote.settings.userName) || '';
+  }
   out.updatedAt = Date.now();
   return migrate(out);
 }
@@ -4436,8 +4442,7 @@ if(authConfigured() && typeof location!=='undefined' && /type=recovery/.test(loc
   }
 } else {
   render();
-  maybeTour();
-  syncNow(false);
+  syncNow(false).finally(()=>maybeTour()); // сначала подтягиваем облако — там может быть имя
 }
 setInterval(()=>syncNow(false), 120000); // авто-подтяжка каждые 2 мин
 document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) syncNow(false); });
